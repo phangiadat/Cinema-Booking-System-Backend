@@ -8,6 +8,8 @@ import suatChieuRoutes from './suatchieu.routes';
 import phimRoutes from './phim.routes';
 import soDoGheRoutes from './sodoghe.routes';
 import userRoutes from './user.routes';
+import giaoDichRoutes from './giaodich.routes';
+import caLamViecRoutes from './calamviec.routes';
 
 const router = Router();
 
@@ -22,5 +24,7 @@ router.use('/suat-chieu', suatChieuRoutes);
 router.use('/phim', phimRoutes);
 router.use('/so-do-ghe', soDoGheRoutes);
 router.use('/nguoi-dung', userRoutes);
+router.use('/giao-dich', giaoDichRoutes);
+router.use('/ca-lam-viec', caLamViecRoutes);
 
 export default router;
