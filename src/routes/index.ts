@@ -1,6 +1,8 @@
 import { Router, Request, Response } from 'express';
 import authRoutes from './auth.routes';
 import phimRoutes from './phim.routes';
+import suatChieuRoutes from './suatchieu.routes';
+import datVeRoutes from './datve.routes';
 import { sendSuccess } from '../utils/response';
 
 const router = Router();
@@ -21,5 +23,7 @@ router.get('/health', (req: Request, res: Response) => {
 // ========================
 router.use('/auth', authRoutes);
 router.use('/phim', phimRoutes);
+router.use('/suat-chieu', suatChieuRoutes);
+router.use('/dat-ve', datVeRoutes);
 
 export default router;

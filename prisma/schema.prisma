@@ -77,9 +77,10 @@ model TaiKhoan {
   NgayCapNhat DateTime? @updatedAt
 
   // Relations
-  KhachHang     KhachHang?
-  NhanVien      NhanVien?
-  RefreshTokens RefreshToken[]
+  KhachHang         KhachHang?
+  NhanVien          NhanVien?
+  RefreshTokens     RefreshToken[]
+  GheSuatChieusHeld GheSuatChieu[]
 
   @@map("tai_khoan")
 }
@@ -301,6 +302,8 @@ model GheSuatChieu {
   MaGhe          String                @db.VarChar(36)
   TrangThai      TrangThaiGheSuatChieu
   GiaVe          Decimal               @db.Decimal(10, 2)
+  ThoiGianGiuGhe DateTime?
+  MaTaiKhoanGiu  String?               @db.VarChar(36)
   KhaDung        Boolean               @default(true)
   NgayTao        DateTime              @default(now())
   NgayCapNhat    DateTime?             @updatedAt
@@ -308,6 +311,7 @@ model GheSuatChieu {
   // Relations
   SuatChieu     SuatChieu      @relation(fields: [MaSuatChieu], references: [MaSuatChieu])
   Ghe           Ghe            @relation(fields: [MaGhe], references: [MaGhe])
+  TaiKhoanGiu   TaiKhoan?      @relation(fields: [MaTaiKhoanGiu], references: [MaTaiKhoan])
   ChiTietDatVes ChiTietDatVe[]
 
   @@index([MaSuatChieu])
