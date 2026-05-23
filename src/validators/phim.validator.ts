@@ -38,9 +38,12 @@ export const createPhimSchema = z
       .string()
       .optional()
       .nullable()
-      .transform((val) => (val ? new Date(val) : null))
+      .transform((val) => {
+        if (val === undefined) return undefined;
+        return val ? new Date(val) : null;
+      })
       .refine(
-        (val) => val === null || !isNaN(val.getTime()),
+        (val) => val === undefined || val === null || (val instanceof Date && !isNaN(val.getTime())),
         'Ngày kết thúc không hợp lệ',
       ),
 
@@ -122,9 +125,12 @@ export const updatePhimSchema = z
       .string()
       .optional()
       .nullable()
-      .transform((val) => (val ? new Date(val) : null))
+      .transform((val) => {
+        if (val === undefined) return undefined;
+        return val ? new Date(val) : null;
+      })
       .refine(
-        (val) => val === null || !isNaN(val.getTime()),
+        (val) => val === undefined || val === null || (val instanceof Date && !isNaN(val.getTime())),
         'Ngày kết thúc không hợp lệ',
       ),
 
@@ -158,7 +164,10 @@ export const updatePhimSchema = z
   .refine(
     (data) => {
       // Empty request body is not allowed
-      return Object.keys(data).length > 0;
+      const hasKeys = Object.keys(data).some(
+        (key) => data[key as keyof typeof data] !== undefined
+      );
+      return hasKeys;
     },
     {
       message: 'Yêu cầu không được để trống body',
