@@ -3,6 +3,9 @@ import authRoutes from './auth.routes';
 import phimRoutes from './phim.routes';
 import suatChieuRoutes from './suatchieu.routes';
 import datVeRoutes from './datve.routes';
+import lichsuRoutes from './lichsu.routes';
+import danhgiaRoutes from './danhgia.routes';
+import hoantienRoutes from './hoantien.routes';
 import { sendSuccess } from '../utils/response';
 
 const router = Router();
@@ -25,5 +28,8 @@ router.use('/auth', authRoutes);
 router.use('/phim', phimRoutes);
 router.use('/suat-chieu', suatChieuRoutes);
 router.use('/dat-ve', datVeRoutes);
+router.use('/lich-su-giao-dich', lichsuRoutes);
+router.use('/danh-gia', danhgiaRoutes);
+router.use('/hoan-tien', hoantienRoutes);
 
 export default router;
