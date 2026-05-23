@@ -10,6 +10,7 @@ import soDoGheRoutes from './sodoghe.routes';
 import userRoutes from './user.routes';
 import giaoDichRoutes from './giaodich.routes';
 import caLamViecRoutes from './calamviec.routes';
+import thongKeRoutes from './thongke.routes';
 
 const router = Router();
 
@@ -26,5 +27,6 @@ router.use('/so-do-ghe', soDoGheRoutes);
 router.use('/nguoi-dung', userRoutes);
 router.use('/giao-dich', giaoDichRoutes);
 router.use('/ca-lam-viec', caLamViecRoutes);
+router.use('/thong-ke', thongKeRoutes);
 
 export default router;
