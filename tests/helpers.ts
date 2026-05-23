@@ -44,13 +44,14 @@ const hashTestPassword = async (password: string): Promise<string> => {
  */
 export const createTestAdmin = async (username = 'test_admin', password = 'password123') => {
   const hashedPassword = await hashTestPassword(password);
+  const randomPhone = '099' + Math.floor(1000000 + Math.random() * 9000000).toString();
   return prisma.taiKhoan.create({
     data: {
       TenDangNhap: username,
       MatKhau: hashedPassword,
       HoTen: 'Test Admin',
       Email: `${username}@test.com`,
-      SoDienThoai: '0999000111',
+      SoDienThoai: randomPhone,
       VaiTro: Role.ADMIN,
       KhaDung: true,
       NhanVien: {
@@ -68,13 +69,14 @@ export const createTestAdmin = async (username = 'test_admin', password = 'passw
  */
 export const createTestStaff = async (username = 'test_staff', password = 'password123') => {
   const hashedPassword = await hashTestPassword(password);
+  const randomPhone = '099' + Math.floor(1000000 + Math.random() * 9000000).toString();
   return prisma.taiKhoan.create({
     data: {
       TenDangNhap: username,
       MatKhau: hashedPassword,
       HoTen: 'Test Staff',
       Email: `${username}@test.com`,
-      SoDienThoai: '0999000222',
+      SoDienThoai: randomPhone,
       VaiTro: Role.STAFF,
       KhaDung: true,
       NhanVien: {
@@ -92,13 +94,14 @@ export const createTestStaff = async (username = 'test_staff', password = 'passw
  */
 export const createTestCustomer = async (username = 'test_customer', password = 'password123') => {
   const hashedPassword = await hashTestPassword(password);
+  const randomPhone = '099' + Math.floor(1000000 + Math.random() * 9000000).toString();
   return prisma.taiKhoan.create({
     data: {
       TenDangNhap: username,
       MatKhau: hashedPassword,
       HoTen: 'Test Customer',
       Email: `${username}@test.com`,
-      SoDienThoai: '0999000333',
+      SoDienThoai: randomPhone,
       VaiTro: Role.CUSTOMER,
       KhaDung: true,
       KhachHang: {

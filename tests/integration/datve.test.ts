@@ -352,4 +352,416 @@ describe('🎟️ Seat Map and Hold Integration Tests', () => {
       expect(dbSeat?.ThoiGianGiuGhe).toBeNull();
     });
   });
+
+  describe('💳 Customer Booking and Payment Core Tests', () => {
+    beforeEach(async () => {
+      // Put seats back to TRONG
+      await prisma.gheSuatChieu.updateMany({
+        where: { MaSuatChieu: showtime.MaSuatChieu },
+        data: {
+          TrangThai: 'TRONG',
+          ThoiGianGiuGhe: null,
+          MaTaiKhoanGiu: null,
+        },
+      });
+    });
+
+    it('1. CUSTOMER can pay successfully for their own held seats via simulation', async () => {
+      const futureExpiry = new Date(Date.now() + 5 * 60 * 1000);
+      await prisma.gheSuatChieu.update({
+        where: { MaGheSuatChieu: seat1.MaGheSuatChieu },
+        data: {
+          TrangThai: 'DANG_GIU',
+          ThoiGianGiuGhe: futureExpiry,
+          MaTaiKhoanGiu: customerAccount.MaTaiKhoan,
+        },
+      });
+
+      const res = await request(app)
+        .post('/api/v1/dat-ve/thanh-toan-gia-lap')
+        .set('Authorization', `Bearer ${customerToken}`)
+        .send({
+          MaSuatChieu: showtime.MaSuatChieu,
+          DanhSachMaGheSuatChieu: [seat1.MaGheSuatChieu],
+          PhuongThucThanhToan: 'VNPAY',
+          KetQuaThanhToan: 'THANH_CONG',
+        });
+
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(res.body.message).toBe('Thanh toán thành công');
+      expect(res.body.data.MaPhieuDat).toBeDefined();
+      expect(res.body.data.TongTien).toBe(105000); // 60000 base + 20000 room + 10000 day + 15000 seat
+      expect(res.body.data.QRPayload).toBe(`QR_${res.body.data.MaPhieuDat}`);
+    });
+
+    it('2. Payment success creates PHIEUDATVE, CHITIETDATVE, GIAODICH in database', async () => {
+      const futureExpiry = new Date(Date.now() + 5 * 60 * 1000);
+      await prisma.gheSuatChieu.update({
+        where: { MaGheSuatChieu: seat1.MaGheSuatChieu },
+        data: {
+          TrangThai: 'DANG_GIU',
+          ThoiGianGiuGhe: futureExpiry,
+          MaTaiKhoanGiu: customerAccount.MaTaiKhoan,
+        },
+      });
+
+      const res = await request(app)
+        .post('/api/v1/dat-ve/thanh-toan-gia-lap')
+        .set('Authorization', `Bearer ${customerToken}`)
+        .send({
+          MaSuatChieu: showtime.MaSuatChieu,
+          DanhSachMaGheSuatChieu: [seat1.MaGheSuatChieu],
+          PhuongThucThanhToan: 'VNPAY',
+          KetQuaThanhToan: 'THANH_CONG',
+        });
+
+      const bookingId = res.body.data.MaPhieuDat;
+
+      // Verify PhieuDatVe
+      const dbBooking = await prisma.phieuDatVe.findUnique({
+        where: { MaPhieuDat: bookingId },
+        include: { ChiTietDatVes: true, GiaoDichs: true },
+      });
+      expect(dbBooking).not.toBeNull();
+      expect(dbBooking?.TrangThai).toBe('DA_THANH_TOAN');
+      expect(Number(dbBooking?.TongTien)).toBe(105000);
+
+      // Verify ChiTietDatVe
+      expect(dbBooking?.ChiTietDatVes).toHaveLength(1);
+      expect(dbBooking?.ChiTietDatVes[0].MaGheSuatChieu).toBe(seat1.MaGheSuatChieu);
+      expect(Number(dbBooking?.ChiTietDatVes[0].GiaVe)).toBe(105000);
+
+      // Verify GiaoDich
+      expect(dbBooking?.GiaoDichs).toHaveLength(1);
+      expect(dbBooking?.GiaoDichs[0].PhuongThuc).toBe('VNPAY');
+      expect(dbBooking?.GiaoDichs[0].TrangThai).toBe('THANH_CONG');
+      expect(Number(dbBooking?.GiaoDichs[0].SoTien)).toBe(105000);
+    });
+
+    it('3. Payment success updates seats to DA_DAT', async () => {
+      const futureExpiry = new Date(Date.now() + 5 * 60 * 1000);
+      await prisma.gheSuatChieu.update({
+        where: { MaGheSuatChieu: seat1.MaGheSuatChieu },
+        data: {
+          TrangThai: 'DANG_GIU',
+          ThoiGianGiuGhe: futureExpiry,
+          MaTaiKhoanGiu: customerAccount.MaTaiKhoan,
+        },
+      });
+
+      await request(app)
+        .post('/api/v1/dat-ve/thanh-toan-gia-lap')
+        .set('Authorization', `Bearer ${customerToken}`)
+        .send({
+          MaSuatChieu: showtime.MaSuatChieu,
+          DanhSachMaGheSuatChieu: [seat1.MaGheSuatChieu],
+          PhuongThucThanhToan: 'VNPAY',
+          KetQuaThanhToan: 'THANH_CONG',
+        });
+
+      const dbSeat = await prisma.gheSuatChieu.findUnique({
+        where: { MaGheSuatChieu: seat1.MaGheSuatChieu },
+      });
+      expect(dbSeat?.TrangThai).toBe('DA_DAT');
+      expect(dbSeat?.MaTaiKhoanGiu).toBeNull();
+      expect(dbSeat?.ThoiGianGiuGhe).toBeNull();
+    });
+
+    it('4. CUSTOMER cannot pay for seats held by another user', async () => {
+      const futureExpiry = new Date(Date.now() + 5 * 60 * 1000);
+      await prisma.gheSuatChieu.update({
+        where: { MaGheSuatChieu: seat1.MaGheSuatChieu },
+        data: {
+          TrangThai: 'DANG_GIU',
+          ThoiGianGiuGhe: futureExpiry,
+          MaTaiKhoanGiu: customer2Account.MaTaiKhoan, // Held by Customer 2
+        },
+      });
+
+      // Customer 1 tries to pay
+      const res = await request(app)
+        .post('/api/v1/dat-ve/thanh-toan-gia-lap')
+        .set('Authorization', `Bearer ${customerToken}`)
+        .send({
+          MaSuatChieu: showtime.MaSuatChieu,
+          DanhSachMaGheSuatChieu: [seat1.MaGheSuatChieu],
+          PhuongThucThanhToan: 'VNPAY',
+          KetQuaThanhToan: 'THANH_CONG',
+        });
+
+      expect(res.status).toBe(400);
+      expect(res.body.success).toBe(false);
+      expect(res.body.message).toContain('không thuộc quyền sở hữu của bạn');
+    });
+
+    it('5. CUSTOMER cannot pay for expired held seats', async () => {
+      const expiredTime = new Date(Date.now() - 5 * 1000); // Expired 5 seconds ago
+      await prisma.gheSuatChieu.update({
+        where: { MaGheSuatChieu: seat1.MaGheSuatChieu },
+        data: {
+          TrangThai: 'DANG_GIU',
+          ThoiGianGiuGhe: expiredTime,
+          MaTaiKhoanGiu: customerAccount.MaTaiKhoan,
+        },
+      });
+
+      const res = await request(app)
+        .post('/api/v1/dat-ve/thanh-toan-gia-lap')
+        .set('Authorization', `Bearer ${customerToken}`)
+        .send({
+          MaSuatChieu: showtime.MaSuatChieu,
+          DanhSachMaGheSuatChieu: [seat1.MaGheSuatChieu],
+          PhuongThucThanhToan: 'VNPAY',
+          KetQuaThanhToan: 'THANH_CONG',
+        });
+
+      expect(res.status).toBe(400);
+      expect(res.body.success).toBe(false);
+      expect(res.body.message).toContain('đã hết hạn giữ');
+    });
+
+    it('6. Failed payment releases held seats and creates no successful booking', async () => {
+      const futureExpiry = new Date(Date.now() + 5 * 60 * 1000);
+      await prisma.gheSuatChieu.update({
+        where: { MaGheSuatChieu: seat1.MaGheSuatChieu },
+        data: {
+          TrangThai: 'DANG_GIU',
+          ThoiGianGiuGhe: futureExpiry,
+          MaTaiKhoanGiu: customerAccount.MaTaiKhoan,
+        },
+      });
+
+      const res = await request(app)
+        .post('/api/v1/dat-ve/thanh-toan-gia-lap')
+        .set('Authorization', `Bearer ${customerToken}`)
+        .send({
+          MaSuatChieu: showtime.MaSuatChieu,
+          DanhSachMaGheSuatChieu: [seat1.MaGheSuatChieu],
+          PhuongThucThanhToan: 'VNPAY',
+          KetQuaThanhToan: 'THAT_BAI',
+        });
+
+      expect(res.status).toBe(400);
+      expect(res.body.success).toBe(false);
+      expect(res.body.message).toContain('Thanh toán giả lập thất bại');
+
+      // Check database: seat released back to TRONG
+      const dbSeat = await prisma.gheSuatChieu.findUnique({
+        where: { MaGheSuatChieu: seat1.MaGheSuatChieu },
+      });
+      expect(dbSeat?.TrangThai).toBe('TRONG');
+      expect(dbSeat?.MaTaiKhoanGiu).toBeNull();
+      expect(dbSeat?.ThoiGianGiuGhe).toBeNull();
+
+      // No bookings created
+      const bookingsCount = await prisma.phieuDatVe.count();
+      expect(bookingsCount).toBe(0);
+    });
+
+    it('7. Customer can cancel own paid booking before showtime starts', async () => {
+      // 1. Pay successfully to create a booking
+      const futureExpiry = new Date(Date.now() + 5 * 60 * 1000);
+      await prisma.gheSuatChieu.update({
+        where: { MaGheSuatChieu: seat1.MaGheSuatChieu },
+        data: {
+          TrangThai: 'DANG_GIU',
+          ThoiGianGiuGhe: futureExpiry,
+          MaTaiKhoanGiu: customerAccount.MaTaiKhoan,
+        },
+      });
+
+      const payRes = await request(app)
+        .post('/api/v1/dat-ve/thanh-toan-gia-lap')
+        .set('Authorization', `Bearer ${customerToken}`)
+        .send({
+          MaSuatChieu: showtime.MaSuatChieu,
+          DanhSachMaGheSuatChieu: [seat1.MaGheSuatChieu],
+          PhuongThucThanhToan: 'VNPAY',
+          KetQuaThanhToan: 'THANH_CONG',
+        });
+
+      const bookingId = payRes.body.data.MaPhieuDat;
+
+      // 2. Cancel the paid booking
+      const cancelRes = await request(app)
+        .post(`/api/v1/dat-ve/${bookingId}/huy`)
+        .set('Authorization', `Bearer ${customerToken}`)
+        .send({
+          LyDoHoan: 'Tôi bận việc đột xuất',
+        });
+
+      expect(cancelRes.status).toBe(200);
+      expect(cancelRes.body.success).toBe(true);
+      expect(cancelRes.body.message).toBe('Hủy vé thành công, yêu cầu hoàn tiền đang chờ duyệt');
+
+      const dbBooking = await prisma.phieuDatVe.findUnique({
+        where: { MaPhieuDat: bookingId },
+      });
+      expect(dbBooking?.TrangThai).toBe('DA_HUY');
+    });
+
+    it('8. Cancelling paid booking creates LICHSUHOANTIEN with CHO_XU_LY', async () => {
+      const futureExpiry = new Date(Date.now() + 5 * 60 * 1000);
+      await prisma.gheSuatChieu.update({
+        where: { MaGheSuatChieu: seat1.MaGheSuatChieu },
+        data: {
+          TrangThai: 'DANG_GIU',
+          ThoiGianGiuGhe: futureExpiry,
+          MaTaiKhoanGiu: customerAccount.MaTaiKhoan,
+        },
+      });
+
+      const payRes = await request(app)
+        .post('/api/v1/dat-ve/thanh-toan-gia-lap')
+        .set('Authorization', `Bearer ${customerToken}`)
+        .send({
+          MaSuatChieu: showtime.MaSuatChieu,
+          DanhSachMaGheSuatChieu: [seat1.MaGheSuatChieu],
+          PhuongThucThanhToan: 'VNPAY',
+          KetQuaThanhToan: 'THANH_CONG',
+        });
+
+      const bookingId = payRes.body.data.MaPhieuDat;
+
+      await request(app)
+        .post(`/api/v1/dat-ve/${bookingId}/huy`)
+        .set('Authorization', `Bearer ${customerToken}`)
+        .send({
+          LyDoHoan: 'Tôi bận việc đột xuất',
+        });
+
+      const dbRefund = await prisma.lichSuHoanTien.findFirst({
+        where: {
+          GiaoDich: {
+            MaPhieuDat: bookingId,
+          },
+        },
+      });
+
+      expect(dbRefund).not.toBeNull();
+      expect(dbRefund?.TrangThai).toBe('CHO_XU_LY');
+      expect(dbRefund?.LyDo).toBe('Tôi bận việc đột xuất');
+      expect(Number(dbRefund?.SoTienHoan)).toBe(105000);
+    });
+
+    it('9. Cancelling paid booking does not release seats immediately', async () => {
+      const futureExpiry = new Date(Date.now() + 5 * 60 * 1000);
+      await prisma.gheSuatChieu.update({
+        where: { MaGheSuatChieu: seat1.MaGheSuatChieu },
+        data: {
+          TrangThai: 'DANG_GIU',
+          ThoiGianGiuGhe: futureExpiry,
+          MaTaiKhoanGiu: customerAccount.MaTaiKhoan,
+        },
+      });
+
+      const payRes = await request(app)
+        .post('/api/v1/dat-ve/thanh-toan-gia-lap')
+        .set('Authorization', `Bearer ${customerToken}`)
+        .send({
+          MaSuatChieu: showtime.MaSuatChieu,
+          DanhSachMaGheSuatChieu: [seat1.MaGheSuatChieu],
+          PhuongThucThanhToan: 'VNPAY',
+          KetQuaThanhToan: 'THANH_CONG',
+        });
+
+      const bookingId = payRes.body.data.MaPhieuDat;
+
+      await request(app)
+        .post(`/api/v1/dat-ve/${bookingId}/huy`)
+        .set('Authorization', `Bearer ${customerToken}`)
+        .send({
+          LyDoHoan: 'Tôi bận việc đột xuất',
+        });
+
+      // Verify database: seat status must remain DA_DAT
+      const dbSeat = await prisma.gheSuatChieu.findUnique({
+        where: { MaGheSuatChieu: seat1.MaGheSuatChieu },
+      });
+      expect(dbSeat?.TrangThai).toBe('DA_DAT');
+    });
+
+    it('10. Customer cannot cancel another customer booking', async () => {
+      const futureExpiry = new Date(Date.now() + 5 * 60 * 1000);
+      await prisma.gheSuatChieu.update({
+        where: { MaGheSuatChieu: seat1.MaGheSuatChieu },
+        data: {
+          TrangThai: 'DANG_GIU',
+          ThoiGianGiuGhe: futureExpiry,
+          MaTaiKhoanGiu: customerAccount.MaTaiKhoan,
+        },
+      });
+
+      const payRes = await request(app)
+        .post('/api/v1/dat-ve/thanh-toan-gia-lap')
+        .set('Authorization', `Bearer ${customerToken}`)
+        .send({
+          MaSuatChieu: showtime.MaSuatChieu,
+          DanhSachMaGheSuatChieu: [seat1.MaGheSuatChieu],
+          PhuongThucThanhToan: 'VNPAY',
+          KetQuaThanhToan: 'THANH_CONG',
+        });
+
+      const bookingId = payRes.body.data.MaPhieuDat;
+
+      // Customer 2 attempts to cancel Customer 1's booking
+      const res = await request(app)
+        .post(`/api/v1/dat-ve/${bookingId}/huy`)
+        .set('Authorization', `Bearer ${customer2Token}`)
+        .send({
+          LyDoHoan: 'Hủy giùm',
+        });
+
+      expect(res.status).toBe(404); // Not found for Customer 2
+      expect(res.body.success).toBe(false);
+    });
+
+    it('11. Customer cannot cancel booking after showtime starts', async () => {
+      const futureExpiry = new Date(Date.now() + 5 * 60 * 1000);
+      await prisma.gheSuatChieu.update({
+        where: { MaGheSuatChieu: seat1.MaGheSuatChieu },
+        data: {
+          TrangThai: 'DANG_GIU',
+          ThoiGianGiuGhe: futureExpiry,
+          MaTaiKhoanGiu: customerAccount.MaTaiKhoan,
+        },
+      });
+
+      const payRes = await request(app)
+        .post('/api/v1/dat-ve/thanh-toan-gia-lap')
+        .set('Authorization', `Bearer ${customerToken}`)
+        .send({
+          MaSuatChieu: showtime.MaSuatChieu,
+          DanhSachMaGheSuatChieu: [seat1.MaGheSuatChieu],
+          PhuongThucThanhToan: 'VNPAY',
+          KetQuaThanhToan: 'THANH_CONG',
+        });
+
+      const bookingId = payRes.body.data.MaPhieuDat;
+
+      // Update showtime to start in the past
+      const pastDate = new Date(Date.now() - 30 * 60 * 1000); // 30 mins ago
+      await prisma.suatChieu.update({
+        where: { MaSuatChieu: showtime.MaSuatChieu },
+        data: {
+          NgayChieu: pastDate,
+          GioChieu: pastDate,
+        },
+      });
+
+      // Attempt to cancel
+      const res = await request(app)
+        .post(`/api/v1/dat-ve/${bookingId}/huy`)
+        .set('Authorization', `Bearer ${customerToken}`)
+        .send({
+          LyDoHoan: 'Trễ giờ rồi muốn hủy',
+        });
+
+      expect(res.status).toBe(400);
+      expect(res.body.success).toBe(false);
+      expect(res.body.message).toContain('đã bắt đầu hoặc đã diễn ra');
+    });
+  });
 });
+
