@@ -1,113 +1,90 @@
-import { Request, Response, NextFunction } from 'express';
+import { Request, Response } from 'express';
 import * as phimService from '../services/phim.service';
-import { sendSuccess, sendCreated } from '../utils/response';
+import { sendSuccess, sendCreated, sendPaginatedSuccess } from '../utils/response';
 import { CreatePhimInput, UpdatePhimInput, PhimQueryInput } from '../validators/phim.validator';
+import { asyncHandler } from '../utils/asyncHandler';
 
 // ========================
-// GET /phim
+// GET /api/v1/phim
 // ========================
-export const getDanhSachPhim = async (
-  req: Request,
-  res: Response,
-  next: NextFunction,
-): Promise<void> => {
-  try {
-    const query = req.query as unknown as PhimQueryInput;
-    const result = await phimService.getDanhSachPhim(query);
+export const getDanhSachPhim = asyncHandler(async (req: Request, res: Response) => {
+  const query = req.query as unknown as PhimQueryInput;
+  const userRole = req.user?.vaiTro;
 
-    sendSuccess(res, 'Lấy danh sách phim thành công', result);
-  } catch (error) {
-    next(error);
-  }
-};
+  const result = await phimService.getDanhSachPhim(query, userRole);
 
-// ========================
-// GET /phim/:maPhim
-// ========================
-export const getChiTietPhim = async (
-  req: Request,
-  res: Response,
-  next: NextFunction,
-): Promise<void> => {
-  try {
-    const { maPhim } = req.params;
-    const phim = await phimService.getChiTietPhim(maPhim);
-
-    sendSuccess(res, 'Lấy chi tiết phim thành công', phim);
-  } catch (error) {
-    next(error);
-  }
-};
+  return sendPaginatedSuccess(
+    res,
+    'Lấy danh sách phim thành công',
+    result.items,
+    {
+      page: result.page,
+      limit: result.limit,
+      total: result.total,
+      totalPages: result.totalPages,
+    },
+  );
+});
 
 // ========================
-// POST /phim
+// GET /api/v1/phim/:maPhim
 // ========================
-export const taoPhim = async (
-  req: Request,
-  res: Response,
-  next: NextFunction,
-): Promise<void> => {
-  try {
-    const input = req.body as CreatePhimInput;
-    const phim = await phimService.taoPhim(input);
+export const getChiTietPhim = asyncHandler(async (req: Request, res: Response) => {
+  const { maPhim } = req.params as { maPhim: string };
+  const userRole = req.user?.vaiTro;
 
-    sendCreated(res, 'Tạo phim thành công', phim);
-  } catch (error) {
-    next(error);
-  }
-};
+  const phim = await phimService.getChiTietPhim(maPhim, userRole);
+
+  return sendSuccess(res, 'Lấy chi tiết phim thành công', phim);
+});
 
 // ========================
-// PUT /phim/:maPhim
+// POST /api/v1/phim
 // ========================
-export const capNhatPhim = async (
-  req: Request,
-  res: Response,
-  next: NextFunction,
-): Promise<void> => {
-  try {
-    const { maPhim } = req.params;
-    const input = req.body as UpdatePhimInput;
-    const phim = await phimService.capNhatPhim(maPhim, input);
+export const taoPhim = asyncHandler(async (req: Request, res: Response) => {
+  const input = req.body as CreatePhimInput;
+  const phim = await phimService.taoPhim(input);
 
-    sendSuccess(res, 'Cập nhật phim thành công', phim);
-  } catch (error) {
-    next(error);
-  }
-};
+  return sendCreated(res, 'Tạo phim thành công', phim);
+});
 
 // ========================
-// PATCH /phim/:maPhim/soft-delete
+// PUT /api/v1/phim/:maPhim
 // ========================
-export const anPhim = async (
-  req: Request,
-  res: Response,
-  next: NextFunction,
-): Promise<void> => {
-  try {
-    const { maPhim } = req.params;
-    const phim = await phimService.anPhim(maPhim);
+export const capNhatPhim = asyncHandler(async (req: Request, res: Response) => {
+  const { maPhim } = req.params as { maPhim: string };
+  const input = req.body as UpdatePhimInput;
+  const phim = await phimService.capNhatPhim(maPhim, input);
 
-    sendSuccess(res, 'Ẩn phim thành công', phim);
-  } catch (error) {
-    next(error);
-  }
-};
+  return sendSuccess(res, 'Cập nhật phim thành công', phim);
+});
 
 // ========================
-// DELETE /phim/:maPhim
+// PATCH /api/v1/phim/:maPhim/soft-delete
 // ========================
-export const xoaPhim = async (
-  req: Request,
-  res: Response,
-  next: NextFunction,
-): Promise<void> => {
-  try {
-    const { maPhim } = req.params;
-    await phimService.xoaPhim(maPhim);
+export const anPhim = asyncHandler(async (req: Request, res: Response) => {
+  const { maPhim } = req.params as { maPhim: string };
+  const phim = await phimService.anPhim(maPhim);
 
-    sendSuccess(res, 'Xóa phim thành công');
-  } catch (error) {
-    next(error);
-  }
-};
+  return sendSuccess(res, 'Ẩn phim thành công', phim);
+});
+
+// ========================
+// PATCH /api/v1/phim/:maPhim/restore
+// ========================
+export const khoiPhucPhim = asyncHandler(async (req: Request, res: Response) => {
+  const { maPhim } = req.params as { maPhim: string };
+  const phim = await phimService.khoiPhucPhim(maPhim);
+
+  return sendSuccess(res, 'Khôi phục phim thành công', phim);
+});
+
+// ========================
+// DELETE /api/v1/phim/:maPhim
+// ========================
+export const xoaPhim = asyncHandler(async (req: Request, res: Response) => {
+  const { maPhim } = req.params as { maPhim: string };
+  await phimService.xoaPhim(maPhim);
+
+  return sendSuccess(res, 'Xóa phim thành công');
+});

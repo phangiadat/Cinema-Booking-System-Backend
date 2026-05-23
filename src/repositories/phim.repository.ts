@@ -3,88 +3,145 @@ import prisma from '../config/prisma';
 import { PhimQueryInput } from '../validators/phim.validator';
 
 // ========================
-// Types
+// Helper: Build Where Clause
 // ========================
-export interface PhimListResult {
-  items: Phim[];
-  total: number;
-  page: number;
-  limit: number;
-  totalPages: number;
-}
+const buildWhereClause = (query: PhimQueryInput): Prisma.PhimWhereInput => {
+  const {
+    keyword,
+    theLoai,
+    gioiHanTuoi,
+    tuNgayKhoiChieu,
+    denNgayKhoiChieu,
+    includeInactive,
+  } = query;
+
+  const where: Prisma.PhimWhereInput = {};
+
+  // If includeInactive is false or undefined, only find active movies
+  if (!includeInactive) {
+    where.KhaDung = true;
+  }
+
+  // Search in TenPhim, TheLoai, DaoDien, DienVien
+  if (keyword) {
+    where.OR = [
+      { TenPhim: { contains: keyword } },
+      { TheLoai: { contains: keyword } },
+      { DaoDien: { contains: keyword } },
+      { DienVien: { contains: keyword } },
+    ];
+  }
+
+  if (theLoai) {
+    where.TheLoai = { contains: theLoai };
+  }
+
+  if (gioiHanTuoi) {
+    where.GioiHanTuoi = gioiHanTuoi;
+  }
+
+  if (tuNgayKhoiChieu || denNgayKhoiChieu) {
+    where.NgayKhoiChieu = {};
+    if (tuNgayKhoiChieu) {
+      where.NgayKhoiChieu.gte = tuNgayKhoiChieu;
+    }
+    if (denNgayKhoiChieu) {
+      where.NgayKhoiChieu.lte = denNgayKhoiChieu;
+    }
+  }
+
+  return where;
+};
 
 // ========================
-// Repository
+// Repository Functions
 // ========================
 
 /**
- * Find a Phim by MaPhim (primary key)
+ * Get a list of Phim with filtering, search, and pagination
  */
-export const findPhimById = async (maPhim: string): Promise<Phim | null> => {
+export const findManyWithFilters = async (
+  query: PhimQueryInput,
+): Promise<Phim[]> => {
+  const {
+    page = 1,
+    limit = 10,
+    sortBy = 'NgayTao',
+    sortOrder = 'desc',
+  } = query;
+
+  const where = buildWhereClause(query);
+  const skip = (page - 1) * limit;
+
+  return prisma.phim.findMany({
+    where,
+    skip,
+    take: limit,
+    orderBy: {
+      [sortBy]: sortOrder,
+    },
+  });
+};
+
+/**
+ * Count the total matching Phim with filtering and search
+ */
+export const countWithFilters = async (
+  query: PhimQueryInput,
+): Promise<number> => {
+  const where = buildWhereClause(query);
+  return prisma.phim.count({ where });
+};
+
+/**
+ * Find a Phim by ID (can be active or inactive)
+ */
+export const findById = async (maPhim: string): Promise<Phim | null> => {
   return prisma.phim.findUnique({
     where: { MaPhim: maPhim },
   });
 };
 
 /**
- * Get a list of Phim with filtering, search, and pagination
+ * Find an active Phim by ID
  */
-export const findAllPhim = async (
-  query: PhimQueryInput,
-): Promise<PhimListResult> => {
-  const { keyword, theLoai, gioiHanTuoi, page, limit } = query;
+export const findActiveById = async (maPhim: string): Promise<Phim | null> => {
+  return prisma.phim.findFirst({
+    where: { MaPhim: maPhim, KhaDung: true },
+  });
+};
 
-  const where: Prisma.PhimWhereInput = {
-    KhaDung: true, // Default: only active movies
-    ...(keyword && {
-      OR: [
-        { TenPhim: { contains: keyword } },
-        { DaoDien: { contains: keyword } },
-        { DienVien: { contains: keyword } },
-      ],
-    }),
-    ...(theLoai && {
-      TheLoai: { contains: theLoai },
-    }),
-    ...(gioiHanTuoi && {
-      GioiHanTuoi: gioiHanTuoi,
-    }),
-  };
-
-  const skip = (page - 1) * limit;
-
-  const [items, total] = await prisma.$transaction([
-    prisma.phim.findMany({
-      where,
-      skip,
-      take: limit,
-      orderBy: { NgayTao: 'desc' },
-    }),
-    prisma.phim.count({ where }),
-  ]);
-
-  return {
-    items,
-    total,
-    page,
-    limit,
-    totalPages: Math.ceil(total / limit),
-  };
+/**
+ * Find duplicate active movie with same TenPhim and NgayKhoiChieu (excluding a MaPhim when updating)
+ */
+export const findDuplicateMovie = async (
+  tenPhim: string,
+  ngayKhoiChieu: Date,
+  excludeMaPhim?: string,
+): Promise<Phim | null> => {
+  return prisma.phim.findFirst({
+    where: {
+      TenPhim: tenPhim,
+      NgayKhoiChieu: ngayKhoiChieu,
+      KhaDung: true,
+      ...(excludeMaPhim && {
+        MaPhim: { not: excludeMaPhim },
+      }),
+    },
+  });
 };
 
 /**
  * Create a new Phim
  */
-export const createPhim = async (
-  data: Prisma.PhimCreateInput,
-): Promise<Phim> => {
+export const create = async (data: Prisma.PhimCreateInput): Promise<Phim> => {
   return prisma.phim.create({ data });
 };
 
 /**
- * Update a Phim
+ * Update a Phim record
  */
-export const updatePhim = async (
+export const update = async (
   maPhim: string,
   data: Prisma.PhimUpdateInput,
 ): Promise<Phim> => {
@@ -95,9 +152,9 @@ export const updatePhim = async (
 };
 
 /**
- * Soft delete: set KhaDung = false
+ * Soft delete a Phim (set KhaDung = false)
  */
-export const softDeletePhim = async (maPhim: string): Promise<Phim> => {
+export const softDelete = async (maPhim: string): Promise<Phim> => {
   return prisma.phim.update({
     where: { MaPhim: maPhim },
     data: { KhaDung: false },
@@ -105,10 +162,46 @@ export const softDeletePhim = async (maPhim: string): Promise<Phim> => {
 };
 
 /**
- * Hard delete: permanently remove from database
+ * Restore a soft-deleted Phim (set KhaDung = true)
  */
-export const hardDeletePhim = async (maPhim: string): Promise<Phim> => {
+export const restore = async (maPhim: string): Promise<Phim> => {
+  return prisma.phim.update({
+    where: { MaPhim: maPhim },
+    data: { KhaDung: true },
+  });
+};
+
+/**
+ * Hard delete a Phim (permanently delete from database)
+ */
+export const hardDelete = async (maPhim: string): Promise<Phim> => {
   return prisma.phim.delete({
     where: { MaPhim: maPhim },
+  });
+};
+
+/**
+ * Count the number of showtimes associated with a movie
+ */
+export const countRelatedShowtimes = async (maPhim: string): Promise<number> => {
+  return prisma.suatChieu.count({
+    where: { MaPhim: maPhim },
+  });
+};
+
+/**
+ * Count related ticket details (ChiTietDatVe) through showtimes and seat showtimes
+ */
+export const countRelatedTicketDetailsByMovieId = async (
+  maPhim: string,
+): Promise<number> => {
+  return prisma.chiTietDatVe.count({
+    where: {
+      GheSuatChieu: {
+        SuatChieu: {
+          MaPhim: maPhim,
+        },
+      },
+    },
   });
 };

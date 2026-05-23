@@ -11,7 +11,7 @@ datasource db {
 }
 
 // ========================
-// Enum
+// Enums
 // ========================
 
 enum Role {
@@ -20,77 +20,394 @@ enum Role {
   CUSTOMER
 }
 
+enum TrangThaiGheSuatChieu {
+  TRONG
+  DA_DAT
+  DANG_GIU
+}
+
+enum TrangThaiPhieuDatVe {
+  CHO_THANH_TOAN
+  DA_THANH_TOAN
+  DA_HUY
+}
+
+enum PhuongThucThanhToan {
+  VNPAY
+  TIEN_MAT
+}
+
+enum TrangThaiGiaoDich {
+  CHO_XU_LY
+  THANH_CONG
+  THAT_BAI
+  DA_HOAN_TIEN
+}
+
+enum TrangThaiHoanTien {
+  CHO_XU_LY
+  DA_HOAN
+  TU_CHOI
+}
+
+enum GioiHanTuoi {
+  P
+  C13
+  C16
+  C18
+}
+
 // ========================
 // Models
 // ========================
 
 model TaiKhoan {
-  MaTaiKhoan   String    @id @default(uuid()) @db.VarChar(36)
-  TenDangNhap  String    @unique @db.VarChar(255)
-  MatKhau      String    @db.VarChar(255)
-  HoTen        String    @db.VarChar(255)
-  Email        String    @unique @db.VarChar(255)
-  SoDienThoai  String    @unique @db.VarChar(20)
-  GioiTinh     Boolean?
-  NgaySinh     DateTime? @db.Date
-  VaiTro       Role
-  KhaDung      Boolean   @default(true)
-  NgayTao      DateTime  @default(now())
-  NgayCapNhat  DateTime? @updatedAt
+  MaTaiKhoan  String    @id @default(uuid()) @db.VarChar(36)
+  TenDangNhap String    @unique @db.VarChar(255)
+  MatKhau     String    @db.VarChar(255)
+  HoTen       String    @db.VarChar(255)
+  Email       String    @unique @db.VarChar(255)
+  SoDienThoai String    @unique @db.VarChar(20)
+  GioiTinh    Boolean?
+  NgaySinh    DateTime? @db.Date
+  VaiTro      Role
+  KhaDung     Boolean   @default(true)
+  NgayTao     DateTime  @default(now())
+  NgayCapNhat DateTime? @updatedAt
 
   // Relations
-  KhachHang    KhachHang?
-  NhanVien     NhanVien?
+  KhachHang     KhachHang?
+  NhanVien      NhanVien?
   RefreshTokens RefreshToken[]
 
   @@map("tai_khoan")
 }
 
 model KhachHang {
-  MaKhachHang  String    @id @default(uuid()) @db.VarChar(36)
-  MaTaiKhoan   String    @unique @db.VarChar(36)
-  KhaDung      Boolean   @default(true)
-  NgayTao      DateTime  @default(now())
-  NgayCapNhat  DateTime? @updatedAt
+  MaKhachHang String    @id @default(uuid()) @db.VarChar(36)
+  MaTaiKhoan  String    @unique @db.VarChar(36)
+  KhaDung     Boolean   @default(true)
+  NgayTao     DateTime  @default(now())
+  NgayCapNhat DateTime? @updatedAt
 
   // Relations
-  TaiKhoan     TaiKhoan  @relation(fields: [MaTaiKhoan], references: [MaTaiKhoan])
+  TaiKhoan    TaiKhoan     @relation(fields: [MaTaiKhoan], references: [MaTaiKhoan])
+  PhieuDatVes PhieuDatVe[]
+  DanhGias    DanhGia[]
 
+  @@index([MaTaiKhoan])
   @@map("khach_hang")
 }
 
 model NhanVien {
-  MaNhanVien   String    @id @default(uuid()) @db.VarChar(36)
-  MaTaiKhoan   String    @unique @db.VarChar(36)
-  ChucVu       String    @db.VarChar(100)
+  MaNhanVien  String    @id @default(uuid()) @db.VarChar(36)
+  MaTaiKhoan  String    @unique @db.VarChar(36)
+  ChucVu      String    @db.VarChar(100)
+  KhaDung     Boolean   @default(true)
+  NgayTao     DateTime  @default(now())
+  NgayCapNhat DateTime? @updatedAt
+
+  // Relations
+  TaiKhoan          TaiKhoan           @relation(fields: [MaTaiKhoan], references: [MaTaiKhoan])
+  ChiTietCaLamViecs ChiTietCaLamViec[]
+  PhieuDatVes       PhieuDatVe[]
+
+  @@index([MaTaiKhoan])
+  @@map("nhan_vien")
+}
+
+model CaLamViec {
+  MaCa        String    @id @default(uuid()) @db.VarChar(36)
+  TenCa       String    @db.VarChar(100)
+  GioBatDau   DateTime  @db.Time(0)
+  GioKetThuc  DateTime  @db.Time(0)
+  KhaDung     Boolean   @default(true)
+  NgayTao     DateTime  @default(now())
+  NgayCapNhat DateTime? @updatedAt
+
+  // Relations
+  ChiTietCaLamViecs ChiTietCaLamViec[]
+
+  @@map("ca_lam_viec")
+}
+
+model ChiTietCaLamViec {
+  MaChiTietCa String    @id @default(uuid()) @db.VarChar(36)
+  MaCa        String    @db.VarChar(36)
+  MaNhanVien  String    @db.VarChar(36)
+  NgayLamViec DateTime  @db.Date
+  KhaDung     Boolean   @default(true)
+  NgayTao     DateTime  @default(now())
+  NgayCapNhat DateTime? @updatedAt
+
+  // Relations
+  CaLamViec CaLamViec @relation(fields: [MaCa], references: [MaCa])
+  NhanVien  NhanVien  @relation(fields: [MaNhanVien], references: [MaNhanVien])
+
+  @@index([MaCa])
+  @@index([MaNhanVien])
+  @@map("chi_tiet_ca_lam_viec")
+}
+
+model SoDoGhe {
+  MaSoDo      String    @id @default(uuid()) @db.VarChar(36)
+  TenSoDo     String    @db.VarChar(255)
+  SoHang      Int
+  SoCot       Int
+  KhaDung     Boolean   @default(true)
+  NgayTao     DateTime  @default(now())
+  NgayCapNhat DateTime? @updatedAt
+
+  // Relations
+  PhongChieus PhongChieu[]
+
+  @@map("so_do_ghe")
+}
+
+model LoaiPhong {
+  MaLoaiPhong  String    @id @default(uuid()) @db.VarChar(36)
+  TenLoaiPhong String    @db.VarChar(100)
+  PhuThu       Decimal   @db.Decimal(10, 2)
   KhaDung      Boolean   @default(true)
   NgayTao      DateTime  @default(now())
   NgayCapNhat  DateTime? @updatedAt
 
   // Relations
-  TaiKhoan     TaiKhoan  @relation(fields: [MaTaiKhoan], references: [MaTaiKhoan])
+  PhongChieus PhongChieu[]
 
-  @@map("nhan_vien")
+  @@map("loai_phong")
+}
+
+model PhongChieu {
+  MaPhong     String    @id @default(uuid()) @db.VarChar(36)
+  TenPhong    String    @db.VarChar(100)
+  MaLoaiPhong String    @db.VarChar(36)
+  MaSoDo      String    @db.VarChar(36)
+  KhaDung     Boolean   @default(true)
+  NgayTao     DateTime  @default(now())
+  NgayCapNhat DateTime? @updatedAt
+
+  // Relations
+  LoaiPhong  LoaiPhong   @relation(fields: [MaLoaiPhong], references: [MaLoaiPhong])
+  SoDoGhe    SoDoGhe     @relation(fields: [MaSoDo], references: [MaSoDo])
+  Ghes       Ghe[]
+  SuatChieus SuatChieu[]
+
+  @@index([MaLoaiPhong])
+  @@index([MaSoDo])
+  @@map("phong_chieu")
+}
+
+model LoaiGhe {
+  MaLoaiGhe   String    @id @default(uuid()) @db.VarChar(36)
+  TenLoaiGhe  String    @db.VarChar(100)
+  PhuThu      Decimal   @db.Decimal(10, 2)
+  KhaDung     Boolean   @default(true)
+  NgayTao     DateTime  @default(now())
+  NgayCapNhat DateTime? @updatedAt
+
+  // Relations
+  Ghes Ghe[]
+
+  @@map("loai_ghe")
+}
+
+model Ghe {
+  MaGhe       String    @id @default(uuid()) @db.VarChar(36)
+  ViTriDay    String    @db.VarChar(10)
+  ViTriCot    Int
+  MaPhong     String    @db.VarChar(36)
+  MaLoaiGhe   String    @db.VarChar(36)
+  KhaDung     Boolean   @default(true)
+  NgayTao     DateTime  @default(now())
+  NgayCapNhat DateTime? @updatedAt
+
+  // Relations
+  PhongChieu    PhongChieu     @relation(fields: [MaPhong], references: [MaPhong])
+  LoaiGhe       LoaiGhe        @relation(fields: [MaLoaiGhe], references: [MaLoaiGhe])
+  GheSuatChieus GheSuatChieu[]
+
+  @@index([MaPhong])
+  @@index([MaLoaiGhe])
+  @@map("ghe")
 }
 
 model Phim {
-  MaPhim        String    @id @default(uuid()) @db.VarChar(36)
-  TenPhim       String    @db.VarChar(255)
+  MaPhim        String      @id @default(uuid()) @db.VarChar(36)
+  TenPhim       String      @db.VarChar(255)
   ThoiLuong     Int
-  TheLoai       String    @db.VarChar(255)
-  NgayKhoiChieu DateTime  @db.Date
-  NgayKetThuc   DateTime? @db.Date
-  DaoDien       String?   @db.VarChar(255)
-  DienVien      String?   @db.Text
-  GioiHanTuoi   String    @db.VarChar(10)
-  NoiDung       String?   @db.Text
-  Trailer       String    @db.Text
-  HinhAnh       String?   @db.VarChar(500)
-  KhaDung       Boolean   @default(true)
-  NgayTao       DateTime  @default(now())
-  NgayCapNhat   DateTime? @updatedAt
+  TheLoai       String      @db.VarChar(255)
+  NgayKhoiChieu DateTime    @db.Date
+  NgayKetThuc   DateTime?   @db.Date
+  DaoDien       String?     @db.VarChar(255)
+  DienVien      String?     @db.Text
+  GioiHanTuoi   GioiHanTuoi
+  NoiDung       String?     @db.Text
+  Trailer       String      @db.Text
+  HinhAnh       String?     @db.VarChar(500)
+  KhaDung       Boolean     @default(true)
+  NgayTao       DateTime    @default(now())
+  NgayCapNhat   DateTime?   @updatedAt
+
+  // Relations
+  SuatChieus SuatChieu[]
+  DanhGias   DanhGia[]
 
   @@map("phim")
+}
+
+model LoaiNgay {
+  MaLoaiNgay  String    @id @default(uuid()) @db.VarChar(36)
+  TenLoaiNgay String    @db.VarChar(100)
+  PhuThu      Decimal   @db.Decimal(10, 2)
+  KhaDung     Boolean   @default(true)
+  NgayTao     DateTime  @default(now())
+  NgayCapNhat DateTime? @updatedAt
+
+  // Relations
+  SuatChieus SuatChieu[]
+
+  @@map("loai_ngay")
+}
+
+model SuatChieu {
+  MaSuatChieu String    @id @default(uuid()) @db.VarChar(36)
+  MaPhim      String    @db.VarChar(36)
+  MaPhong     String    @db.VarChar(36)
+  MaLoaiNgay  String    @db.VarChar(36)
+  NgayChieu   DateTime  @db.Date
+  GioChieu    DateTime  @db.Time(0)
+  GiaVeGoc    Decimal   @db.Decimal(10, 2)
+  KhaDung     Boolean   @default(true)
+  NgayTao     DateTime  @default(now())
+  NgayCapNhat DateTime? @updatedAt
+
+  // Relations
+  Phim          Phim           @relation(fields: [MaPhim], references: [MaPhim])
+  PhongChieu    PhongChieu     @relation(fields: [MaPhong], references: [MaPhong])
+  LoaiNgay      LoaiNgay       @relation(fields: [MaLoaiNgay], references: [MaLoaiNgay])
+  GheSuatChieus GheSuatChieu[]
+
+  @@index([MaPhim])
+  @@index([MaPhong])
+  @@index([MaLoaiNgay])
+  @@map("suat_chieu")
+}
+
+model GheSuatChieu {
+  MaGheSuatChieu String                @id @default(uuid()) @db.VarChar(36)
+  MaSuatChieu    String                @db.VarChar(36)
+  MaGhe          String                @db.VarChar(36)
+  TrangThai      TrangThaiGheSuatChieu
+  GiaVe          Decimal               @db.Decimal(10, 2)
+  KhaDung        Boolean               @default(true)
+  NgayTao        DateTime              @default(now())
+  NgayCapNhat    DateTime?             @updatedAt
+
+  // Relations
+  SuatChieu     SuatChieu      @relation(fields: [MaSuatChieu], references: [MaSuatChieu])
+  Ghe           Ghe            @relation(fields: [MaGhe], references: [MaGhe])
+  ChiTietDatVes ChiTietDatVe[]
+
+  @@index([MaSuatChieu])
+  @@index([MaGhe])
+  @@map("ghe_suat_chieu")
+}
+
+model PhieuDatVe {
+  MaPhieuDat  String              @id @default(uuid()) @db.VarChar(36)
+  MaKhachHang String?             @db.VarChar(36)
+  MaNhanVien  String?             @db.VarChar(36)
+  TongTien    Decimal             @db.Decimal(10, 2)
+  TrangThai   TrangThaiPhieuDatVe
+  KhaDung     Boolean             @default(true)
+  NgayTao     DateTime            @default(now())
+  NgayCapNhat DateTime?           @updatedAt
+
+  // Relations
+  KhachHang     KhachHang?     @relation(fields: [MaKhachHang], references: [MaKhachHang])
+  NhanVien      NhanVien?      @relation(fields: [MaNhanVien], references: [MaNhanVien])
+  ChiTietDatVes ChiTietDatVe[]
+  GiaoDichs     GiaoDich[]
+
+  @@index([MaKhachHang])
+  @@index([MaNhanVien])
+  @@map("phieu_dat_ve")
+}
+
+model ChiTietDatVe {
+  MaChiTietDat   String    @id @default(uuid()) @db.VarChar(36)
+  MaPhieuDat     String    @db.VarChar(36)
+  MaGheSuatChieu String    @db.VarChar(36)
+  GiaVe          Decimal   @db.Decimal(10, 2)
+  KhaDung        Boolean   @default(true)
+  NgayTao        DateTime  @default(now())
+  NgayCapNhat    DateTime? @updatedAt
+
+  // Relations
+  PhieuDatVe   PhieuDatVe   @relation(fields: [MaPhieuDat], references: [MaPhieuDat])
+  GheSuatChieu GheSuatChieu @relation(fields: [MaGheSuatChieu], references: [MaGheSuatChieu])
+
+  @@index([MaPhieuDat])
+  @@index([MaGheSuatChieu])
+  @@map("chi_tiet_dat_ve")
+}
+
+model GiaoDich {
+  MaGiaoDich      String              @id @default(uuid()) @db.VarChar(36)
+  MaPhieuDat      String              @db.VarChar(36)
+  PhuongThuc      PhuongThucThanhToan
+  SoTien          Decimal             @db.Decimal(10, 2)
+  TrangThai       TrangThaiGiaoDich
+  MaGiaoDichNgoai String?             @db.VarChar(255)
+  NgayGiaoDich    DateTime            @default(now())
+  KhaDung         Boolean             @default(true)
+  NgayTao         DateTime            @default(now())
+  NgayCapNhat     DateTime?           @updatedAt
+
+  // Relations
+  PhieuDatVe      PhieuDatVe       @relation(fields: [MaPhieuDat], references: [MaPhieuDat])
+  LichSuHoanTiens LichSuHoanTien[]
+
+  @@index([MaPhieuDat])
+  @@map("giao_dich")
+}
+
+model LichSuHoanTien {
+  MaHoanTien   String            @id @default(uuid()) @db.VarChar(36)
+  MaGiaoDich   String            @db.VarChar(36)
+  SoTienHoan   Decimal           @db.Decimal(10, 2)
+  LyDo         String            @db.Text
+  TrangThai    TrangThaiHoanTien
+  NgayHoanTien DateTime?         @db.Date
+  KhaDung      Boolean           @default(true)
+  NgayTao      DateTime          @default(now())
+  NgayCapNhat  DateTime?         @updatedAt
+
+  // Relations
+  GiaoDich GiaoDich @relation(fields: [MaGiaoDich], references: [MaGiaoDich])
+
+  @@index([MaGiaoDich])
+  @@map("lich_su_hoan_tien")
+}
+
+model DanhGia {
+  MaDanhGia   String    @id @default(uuid()) @db.VarChar(36)
+  MaKhachHang String    @db.VarChar(36)
+  MaPhim      String    @db.VarChar(36)
+  SoSao       Int
+  BinhLuan    String?   @db.Text
+  KhaDung     Boolean   @default(true)
+  NgayTao     DateTime  @default(now())
+  NgayCapNhat DateTime? @updatedAt
+
+  // Relations
+  KhachHang KhachHang @relation(fields: [MaKhachHang], references: [MaKhachHang])
+  Phim      Phim      @relation(fields: [MaPhim], references: [MaPhim])
+
+  @@index([MaKhachHang])
+  @@index([MaPhim])
+  @@map("danh_gia")
 }
 
 model RefreshToken {
@@ -102,7 +419,8 @@ model RefreshToken {
   NgayTao        DateTime @default(now())
 
   // Relations
-  TaiKhoan       TaiKhoan @relation(fields: [MaTaiKhoan], references: [MaTaiKhoan])
+  TaiKhoan TaiKhoan @relation(fields: [MaTaiKhoan], references: [MaTaiKhoan])
 
+  @@index([MaTaiKhoan])
   @@map("refresh_token")
 }
