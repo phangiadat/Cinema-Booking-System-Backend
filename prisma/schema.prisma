@@ -1,0 +1,108 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// ========================
+// Enum
+// ========================
+
+enum Role {
+  ADMIN
+  STAFF
+  CUSTOMER
+}
+
+// ========================
+// Models
+// ========================
+
+model TaiKhoan {
+  MaTaiKhoan   String    @id @default(uuid()) @db.VarChar(36)
+  TenDangNhap  String    @unique @db.VarChar(255)
+  MatKhau      String    @db.VarChar(255)
+  HoTen        String    @db.VarChar(255)
+  Email        String    @unique @db.VarChar(255)
+  SoDienThoai  String    @unique @db.VarChar(20)
+  GioiTinh     Boolean?
+  NgaySinh     DateTime? @db.Date
+  VaiTro       Role
+  KhaDung      Boolean   @default(true)
+  NgayTao      DateTime  @default(now())
+  NgayCapNhat  DateTime? @updatedAt
+
+  // Relations
+  KhachHang    KhachHang?
+  NhanVien     NhanVien?
+  RefreshTokens RefreshToken[]
+
+  @@map("tai_khoan")
+}
+
+model KhachHang {
+  MaKhachHang  String    @id @default(uuid()) @db.VarChar(36)
+  MaTaiKhoan   String    @unique @db.VarChar(36)
+  KhaDung      Boolean   @default(true)
+  NgayTao      DateTime  @default(now())
+  NgayCapNhat  DateTime? @updatedAt
+
+  // Relations
+  TaiKhoan     TaiKhoan  @relation(fields: [MaTaiKhoan], references: [MaTaiKhoan])
+
+  @@map("khach_hang")
+}
+
+model NhanVien {
+  MaNhanVien   String    @id @default(uuid()) @db.VarChar(36)
+  MaTaiKhoan   String    @unique @db.VarChar(36)
+  ChucVu       String    @db.VarChar(100)
+  KhaDung      Boolean   @default(true)
+  NgayTao      DateTime  @default(now())
+  NgayCapNhat  DateTime? @updatedAt
+
+  // Relations
+  TaiKhoan     TaiKhoan  @relation(fields: [MaTaiKhoan], references: [MaTaiKhoan])
+
+  @@map("nhan_vien")
+}
+
+model Phim {
+  MaPhim        String    @id @default(uuid()) @db.VarChar(36)
+  TenPhim       String    @db.VarChar(255)
+  ThoiLuong     Int
+  TheLoai       String    @db.VarChar(255)
+  NgayKhoiChieu DateTime  @db.Date
+  NgayKetThuc   DateTime? @db.Date
+  DaoDien       String?   @db.VarChar(255)
+  DienVien      String?   @db.Text
+  GioiHanTuoi   String    @db.VarChar(10)
+  NoiDung       String?   @db.Text
+  Trailer       String    @db.Text
+  HinhAnh       String?   @db.VarChar(500)
+  KhaDung       Boolean   @default(true)
+  NgayTao       DateTime  @default(now())
+  NgayCapNhat   DateTime? @updatedAt
+
+  @@map("phim")
+}
+
+model RefreshToken {
+  MaRefreshToken String   @id @default(uuid()) @db.VarChar(36)
+  MaTaiKhoan     String   @db.VarChar(36)
+  TokenHash      String   @db.VarChar(255)
+  HetHanLuc      DateTime
+  BiThuHoi       Boolean  @default(false)
+  NgayTao        DateTime @default(now())
+
+  // Relations
+  TaiKhoan       TaiKhoan @relation(fields: [MaTaiKhoan], references: [MaTaiKhoan])
+
+  @@map("refresh_token")
+}
