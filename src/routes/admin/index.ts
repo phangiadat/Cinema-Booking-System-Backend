@@ -6,6 +6,8 @@ import metadataRoutes from './metadata.routes';
 import phongChieuRoutes from './phongchieu.routes';
 import suatChieuRoutes from './suatchieu.routes';
 import phimRoutes from './phim.routes';
+import soDoGheRoutes from './sodoghe.routes';
+import userRoutes from './user.routes';
 
 const router = Router();
 
@@ -18,5 +20,7 @@ router.use('/', metadataRoutes);
 router.use('/phong-chieu', phongChieuRoutes);
 router.use('/suat-chieu', suatChieuRoutes);
 router.use('/phim', phimRoutes);
+router.use('/so-do-ghe', soDoGheRoutes);
+router.use('/nguoi-dung', userRoutes);
 
 export default router;
