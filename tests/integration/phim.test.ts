@@ -115,7 +115,7 @@ describe('🎬 Phim Integration Tests', () => {
       };
 
       const res = await request(app)
-        .post('/api/v1/phim')
+        .post('/api/v1/admin/phim')
         .set('Authorization', `Bearer ${adminToken}`)
         .send(movieData);
 
@@ -133,7 +133,7 @@ describe('🎬 Phim Integration Tests', () => {
 
     it('should block non-admin users from creating a movie', async () => {
       const res = await request(app)
-        .post('/api/v1/phim')
+        .post('/api/v1/admin/phim')
         .set('Authorization', `Bearer ${customerToken}`)
         .send({
           TenPhim: 'Attempt',
@@ -151,7 +151,7 @@ describe('🎬 Phim Integration Tests', () => {
       const movie = await createTestMovie({ TenPhim: 'To Update', ThoiLuong: 100 });
 
       const res = await request(app)
-        .put(`/api/v1/phim/${movie.MaPhim}`)
+        .put(`/api/v1/admin/phim/${movie.MaPhim}`)
         .set('Authorization', `Bearer ${adminToken}`)
         .send({
           TenPhim: 'Updated Title',
@@ -168,7 +168,7 @@ describe('🎬 Phim Integration Tests', () => {
       const movie = await createTestMovie({ TenPhim: 'To Soft Delete', KhaDung: true });
 
       const res = await request(app)
-        .patch(`/api/v1/phim/${movie.MaPhim}/soft-delete`)
+        .patch(`/api/v1/admin/phim/${movie.MaPhim}/soft-delete`)
         .set('Authorization', `Bearer ${adminToken}`);
 
       expect(res.status).toBe(200);
@@ -185,7 +185,7 @@ describe('🎬 Phim Integration Tests', () => {
       const movie = await createTestMovie({ TenPhim: 'To Restore', KhaDung: false });
 
       const res = await request(app)
-        .patch(`/api/v1/phim/${movie.MaPhim}/restore`)
+        .patch(`/api/v1/admin/phim/${movie.MaPhim}/restore`)
         .set('Authorization', `Bearer ${adminToken}`);
 
       expect(res.status).toBe(200);
@@ -202,7 +202,7 @@ describe('🎬 Phim Integration Tests', () => {
       const movie = await createTestMovie({ TenPhim: 'To Hard Delete' });
 
       const res = await request(app)
-        .delete(`/api/v1/phim/${movie.MaPhim}`)
+        .delete(`/api/v1/admin/phim/${movie.MaPhim}`)
         .set('Authorization', `Bearer ${adminToken}`);
 
       expect(res.status).toBe(200);
@@ -231,7 +231,7 @@ describe('🎬 Phim Integration Tests', () => {
   describe('🛡️ Request Validation', () => {
     it('should fail to create movie without TenPhim', async () => {
       const res = await request(app)
-        .post('/api/v1/phim')
+        .post('/api/v1/admin/phim')
         .set('Authorization', `Bearer ${adminToken}`)
         .send({
           ThoiLuong: 120,
@@ -248,7 +248,7 @@ describe('🎬 Phim Integration Tests', () => {
 
     it('should fail to create movie with negative ThoiLuong', async () => {
       const res = await request(app)
-        .post('/api/v1/phim')
+        .post('/api/v1/admin/phim')
         .set('Authorization', `Bearer ${adminToken}`)
         .send({
           TenPhim: 'Negative ThoiLuong',
@@ -266,7 +266,7 @@ describe('🎬 Phim Integration Tests', () => {
 
     it('should fail to create movie with non-integer ThoiLuong', async () => {
       const res = await request(app)
-        .post('/api/v1/phim')
+        .post('/api/v1/admin/phim')
         .set('Authorization', `Bearer ${adminToken}`)
         .send({
           TenPhim: 'Non-integer ThoiLuong',
@@ -284,7 +284,7 @@ describe('🎬 Phim Integration Tests', () => {
 
     it('should fail to create movie with NgayKetThuc before NgayKhoiChieu', async () => {
       const res = await request(app)
-        .post('/api/v1/phim')
+        .post('/api/v1/admin/phim')
         .set('Authorization', `Bearer ${adminToken}`)
         .send({
           TenPhim: 'Invalid End Date',
@@ -303,7 +303,7 @@ describe('🎬 Phim Integration Tests', () => {
 
     it('should fail to create movie with invalid GioiHanTuoi', async () => {
       const res = await request(app)
-        .post('/api/v1/phim')
+        .post('/api/v1/admin/phim')
         .set('Authorization', `Bearer ${adminToken}`)
         .send({
           TenPhim: 'Invalid Age Limit',
@@ -323,7 +323,7 @@ describe('🎬 Phim Integration Tests', () => {
       const movie = await createTestMovie();
 
       const res = await request(app)
-        .put(`/api/v1/phim/${movie.MaPhim}`)
+        .put(`/api/v1/admin/phim/${movie.MaPhim}`)
         .set('Authorization', `Bearer ${adminToken}`)
         .send({});
 
@@ -341,7 +341,7 @@ describe('🎬 Phim Integration Tests', () => {
       });
 
       const res = await request(app)
-        .post('/api/v1/phim')
+        .post('/api/v1/admin/phim')
         .set('Authorization', `Bearer ${adminToken}`)
         .send({
           TenPhim: 'Duplicate Check',
@@ -362,7 +362,7 @@ describe('🎬 Phim Integration Tests', () => {
       await createTicketDetailForMovie(movie.MaPhim);
 
       const res = await request(app)
-        .delete(`/api/v1/phim/${movie.MaPhim}`)
+        .delete(`/api/v1/admin/phim/${movie.MaPhim}`)
         .set('Authorization', `Bearer ${adminToken}`);
 
       expect(res.status).toBe(400);

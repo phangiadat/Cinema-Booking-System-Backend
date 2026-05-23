@@ -5,6 +5,7 @@ import { requireRoles } from '../../middlewares/role.middleware';
 import metadataRoutes from './metadata.routes';
 import phongChieuRoutes from './phongchieu.routes';
 import suatChieuRoutes from './suatchieu.routes';
+import phimRoutes from './phim.routes';
 
 const router = Router();
 
@@ -16,5 +17,6 @@ router.use(requireRoles(Role.ADMIN));
 router.use('/', metadataRoutes);
 router.use('/phong-chieu', phongChieuRoutes);
 router.use('/suat-chieu', suatChieuRoutes);
+router.use('/phim', phimRoutes);
 
 export default router;
