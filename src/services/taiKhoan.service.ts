@@ -1,6 +1,12 @@
 import { Role } from '@prisma/client';
-import { findCustomerProfileByAccountId } from '../repositories/taikhoan.repository';
-import { UnauthorizedError, NotFoundError } from '../utils/errors';
+import {
+  findCustomerProfileByAccountId,
+  findByEmail,
+  findByPhone,
+  updateProfile,
+} from '../repositories/taikhoan.repository';
+import { UnauthorizedError, NotFoundError, ConflictError } from '../utils/errors';
+import { UpdateProfileInput } from '../validators/taiKhoan.validator';
 
 export interface CustomerProfileResponse {
   MaTaiKhoan: string;
@@ -47,5 +53,64 @@ export const getCurrentCustomerProfile = async (
     KhaDung: taiKhoan.KhaDung,
     NgayTao: taiKhoan.NgayTao,
     NgayCapNhat: taiKhoan.NgayCapNhat,
+  };
+};
+
+/**
+ * Update current customer's profile details
+ */
+export const updateCurrentCustomerProfile = async (
+  maTaiKhoan: string,
+  input: UpdateProfileInput,
+): Promise<CustomerProfileResponse> => {
+  const existing = await findCustomerProfileByAccountId(maTaiKhoan);
+
+  if (!existing) {
+    throw new NotFoundError('Không tìm thấy tài khoản');
+  }
+
+  // Active account check
+  if (!existing.KhaDung || (existing.KhachHang && !existing.KhachHang.KhaDung)) {
+    throw new UnauthorizedError('Tài khoản đã bị vô hiệu hóa');
+  }
+
+  // Duplicate email check
+  if (input.Email && input.Email !== existing.Email) {
+    const duplicateEmail = await findByEmail(input.Email);
+    if (duplicateEmail && duplicateEmail.MaTaiKhoan !== maTaiKhoan) {
+      throw new ConflictError('Email đã được sử dụng');
+    }
+  }
+
+  // Duplicate phone check
+  if (input.SoDienThoai && input.SoDienThoai !== existing.SoDienThoai) {
+    const duplicatePhone = await findByPhone(input.SoDienThoai);
+    if (duplicatePhone && duplicatePhone.MaTaiKhoan !== maTaiKhoan) {
+      throw new ConflictError('Số điện thoại đã được sử dụng');
+    }
+  }
+
+  // Perform update
+  const updated = await updateProfile(maTaiKhoan, {
+    HoTen: input.HoTen,
+    Email: input.Email,
+    SoDienThoai: input.SoDienThoai,
+    GioiTinh: input.GioiTinh,
+    NgaySinh: input.NgaySinh,
+  });
+
+  return {
+    MaTaiKhoan: updated.MaTaiKhoan,
+    MaKhachHang: updated.KhachHang?.MaKhachHang,
+    TenDangNhap: updated.TenDangNhap,
+    HoTen: updated.HoTen,
+    Email: updated.Email,
+    SoDienThoai: updated.SoDienThoai,
+    GioiTinh: updated.GioiTinh,
+    NgaySinh: updated.NgaySinh,
+    VaiTro: updated.VaiTro,
+    KhaDung: updated.KhaDung,
+    NgayTao: updated.NgayTao,
+    NgayCapNhat: updated.NgayCapNhat,
   };
 };

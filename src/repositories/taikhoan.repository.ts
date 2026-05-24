@@ -121,3 +121,20 @@ export const findByPhone = async (
   });
 };
 
+/**
+ * Update a TaiKhoan profile and include associated KhachHang profile
+ */
+export const updateProfile = async (
+  maTaiKhoan: string,
+  data: Prisma.TaiKhoanUpdateInput,
+) => {
+  return prisma.taiKhoan.update({
+    where: { MaTaiKhoan: maTaiKhoan },
+    data,
+    include: {
+      KhachHang: true,
+    },
+  });
+};
+
+

@@ -3,6 +3,8 @@ import { Role } from '@prisma/client';
 import * as taiKhoanController from '../controllers/taiKhoan.controller';
 import { authMiddleware } from '../middlewares/auth.middleware';
 import { requireRoles } from '../middlewares/role.middleware';
+import { validate } from '../middlewares/validate.middleware';
+import { updateProfileSchema } from '../validators/taiKhoan.validator';
 
 const router = Router();
 
@@ -16,6 +18,19 @@ router.get(
   authMiddleware,
   requireRoles(Role.CUSTOMER),
   taiKhoanController.getThongTinTaiKhoan,
+);
+
+/**
+ * @route   PUT /api/v1/tai-khoan/thong-tin
+ * @desc    Cập nhật thông tin hồ sơ khách hàng hiện tại
+ * @access  Private (CUSTOMER)
+ */
+router.put(
+  '/thong-tin',
+  authMiddleware,
+  requireRoles(Role.CUSTOMER),
+  validate(updateProfileSchema),
+  taiKhoanController.capNhatThongTinTaiKhoan,
 );
 
 export default router;
