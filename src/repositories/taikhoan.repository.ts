@@ -85,3 +85,39 @@ export const updateTaiKhoan = async (
     data,
   });
 };
+
+/**
+ * Find a TaiKhoan by MaTaiKhoan (alias of findTaiKhoanById)
+ */
+export const findById = findTaiKhoanById;
+
+/**
+ * Find a TaiKhoan with its associated KhachHang profile
+ */
+export const findCustomerProfileByAccountId = async (
+  maTaiKhoan: string,
+) => {
+  return prisma.taiKhoan.findUnique({
+    where: { MaTaiKhoan: maTaiKhoan },
+    include: {
+      KhachHang: true,
+    },
+  });
+};
+
+/**
+ * Find a TaiKhoan by Email (alias of findTaiKhoanByEmail)
+ */
+export const findByEmail = findTaiKhoanByEmail;
+
+/**
+ * Find a TaiKhoan by SoDienThoai
+ */
+export const findByPhone = async (
+  soDienThoai: string,
+): Promise<TaiKhoan | null> => {
+  return prisma.taiKhoan.findUnique({
+    where: { SoDienThoai: soDienThoai },
+  });
+};
+
