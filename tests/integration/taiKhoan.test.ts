@@ -60,7 +60,7 @@ describe('👤 Customer Profile Integration Tests', () => {
       expect(res.body.data.TenDangNhap).toBe('cust_profile_test');
       expect(res.body.data.HoTen).toBe('Test Customer');
       expect(res.body.data.Email).toBe('cust_profile_test@test.com');
-      expect(res.body.data.SoDienThoai).toBe('0999000333');
+      expect(res.body.data.SoDienThoai).toBe(customerAccount.SoDienThoai);
       expect(res.body.data.VaiTro).toBe('CUSTOMER');
       expect(res.body.data.MaKhachHang).toBeDefined();
     });
