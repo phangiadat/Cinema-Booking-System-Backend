@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import * as phimController from '../controllers/phim.controller';
-import { authMiddleware } from '../middlewares/auth.middleware';
+import { authMiddleware, optionalAuthMiddleware } from '../middlewares/auth.middleware';
 import { requireRoles } from '../middlewares/role.middleware';
 import { validate } from '../middlewares/validate.middleware';
 import {
@@ -10,25 +10,45 @@ import {
 } from '../validators/phim.validator';
 import { Role } from '@prisma/client';
 
+import * as danhGiaController from '../controllers/danhgia.controller';
+import { movieReviewParamsSchema, movieReviewQuerySchema } from '../validators/danhgia.validator';
+
 const router = Router();
 
 /**
  * @route   GET /api/v1/phim
  * @desc    Lấy danh sách phim (có thể lọc, tìm kiếm, phân trang)
- * @access  Public
+ * @access  Public (Optional auth to allow Admin to see inactive movies)
  */
 router.get(
   '/',
+  optionalAuthMiddleware,
   validate(phimQuerySchema, 'query'),
   phimController.getDanhSachPhim,
 );
 
 /**
- * @route   GET /api/v1/phim/:maPhim
- * @desc    Lấy chi tiết một phim theo mã
+ * @route   GET /api/v1/phim/:maPhim/danh-gia
+ * @desc    Lấy danh sách đánh giá phim
  * @access  Public
  */
-router.get('/:maPhim', phimController.getChiTietPhim);
+router.get(
+  '/:maPhim/danh-gia',
+  validate(movieReviewParamsSchema, 'params'),
+  validate(movieReviewQuerySchema, 'query'),
+  danhGiaController.getDanhSachDanhGia,
+);
+
+/**
+ * @route   GET /api/v1/phim/:maPhim
+ * @desc    Lấy chi tiết một phim theo mã
+ * @access  Public (Optional auth to allow Admin to see inactive movie details)
+ */
+router.get(
+  '/:maPhim',
+  optionalAuthMiddleware,
+  phimController.getChiTietPhim,
+);
 
 /**
  * @route   POST /api/v1/phim
@@ -66,6 +86,18 @@ router.patch(
   authMiddleware,
   requireRoles(Role.ADMIN),
   phimController.anPhim,
+);
+
+/**
+ * @route   PATCH /api/v1/phim/:maPhim/restore
+ * @desc    Khôi phục phim (set KhaDung = true)
+ * @access  Private - ADMIN only
+ */
+router.patch(
+  '/:maPhim/restore',
+  authMiddleware,
+  requireRoles(Role.ADMIN),
+  phimController.khoiPhucPhim,
 );
 
 /**

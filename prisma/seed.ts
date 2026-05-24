@@ -1,4 +1,4 @@
-import { PrismaClient, Role } from "@prisma/client";
+import { PrismaClient, Role, GioiHanTuoi, TrangThaiGheSuatChieu } from "@prisma/client";
 import bcrypt from "bcrypt";
 
 const prisma = new PrismaClient();
@@ -11,19 +11,37 @@ async function main() {
 
   const hashedPassword = await bcrypt.hash(DEFAULT_PASSWORD, SALT_ROUNDS);
 
-  // await prisma.nhanVien.deleteMany({});
-  // await prisma.khachHang.deleteMany({});
-  // await prisma.refreshToken.deleteMany({});
-  // await prisma.taiKhoan.deleteMany({});
-  // await prisma.phim.deleteMany({});
-  // console.log('🗑️ Đã xóa sạch dữ liệu cũ trong Database.');
   // ========================
-  // Tạo tài khoản Admin
+  // Dọn dẹp dữ liệu cũ theo thứ tự ràng buộc khóa ngoại
   // ========================
-  const admin = await prisma.taiKhoan.upsert({
-    where: { TenDangNhap: "admin" },
-    update: {},
-    create: {
+  console.log("🗑️ Đang dọn dẹp dữ liệu cũ...");
+  await prisma.chiTietDatVe.deleteMany({});
+  await prisma.phieuDatVe.deleteMany({});
+  await prisma.lichSuHoanTien.deleteMany({});
+  await prisma.giaoDich.deleteMany({});
+  await prisma.gheSuatChieu.deleteMany({});
+  await prisma.suatChieu.deleteMany({});
+  await prisma.danhGia.deleteMany({});
+  await prisma.refreshToken.deleteMany({});
+  await prisma.nhanVien.deleteMany({});
+  await prisma.khachHang.deleteMany({});
+  await prisma.taiKhoan.deleteMany({});
+  await prisma.ghe.deleteMany({});
+  await prisma.phongChieu.deleteMany({});
+  await prisma.soDoGhe.deleteMany({});
+  await prisma.loaiPhong.deleteMany({});
+  await prisma.loaiGhe.deleteMany({});
+  await prisma.loaiNgay.deleteMany({});
+  await prisma.chiTietCaLamViec.deleteMany({});
+  await prisma.caLamViec.deleteMany({});
+  await prisma.phim.deleteMany({});
+  console.log("🗑️ Đã dọn sạch database.");
+
+  // ========================
+  // Tạo tài khoản Admin, Nhân viên, Khách hàng
+  // ========================
+  const admin = await prisma.taiKhoan.create({
+    data: {
       TenDangNhap: "admin",
       MatKhau: hashedPassword,
       HoTen: "Quản trị viên",
@@ -43,13 +61,8 @@ async function main() {
   });
   console.log(`✅ Đã tạo tài khoản Admin: ${admin.TenDangNhap}`);
 
-  // ========================
-  // Tạo tài khoản Nhân viên
-  // ========================
-  const staff = await prisma.taiKhoan.upsert({
-    where: { TenDangNhap: "nhanvien01" },
-    update: {},
-    create: {
+  const staff = await prisma.taiKhoan.create({
+    data: {
       TenDangNhap: "nhanvien01",
       MatKhau: hashedPassword,
       HoTen: "Nguyễn Văn An",
@@ -69,13 +82,8 @@ async function main() {
   });
   console.log(`✅ Đã tạo tài khoản Nhân viên: ${staff.TenDangNhap}`);
 
-  // ========================
-  // Tạo tài khoản Khách hàng
-  // ========================
-  const customer = await prisma.taiKhoan.upsert({
-    where: { TenDangNhap: "khachhang01" },
-    update: {},
-    create: {
+  const customer = await prisma.taiKhoan.create({
+    data: {
       TenDangNhap: "khachhang01",
       MatKhau: hashedPassword,
       HoTen: "Trần Thị Bích",
@@ -91,24 +99,113 @@ async function main() {
         },
       },
     },
+    include: {
+      KhachHang: true,
+    },
   });
   console.log(`✅ Đã tạo tài khoản Khách hàng: ${customer.TenDangNhap}`);
 
   // ========================
-  // Tạo dữ liệu Phim
+  // Tạo dữ liệu loại phòng, sơ đồ ghế, phòng chiếu
+  // ========================
+  const lp2D = await prisma.loaiPhong.create({
+    data: { TenLoaiPhong: "2D Standard", PhuThu: 0.0 },
+  });
+  const lp3D = await prisma.loaiPhong.create({
+    data: { TenLoaiPhong: "3D Premium", PhuThu: 20000.0 },
+  });
+  const lpIMAX = await prisma.loaiPhong.create({
+    data: { TenLoaiPhong: "IMAX Ultimate", PhuThu: 50000.0 },
+  });
+
+  const soDo = await prisma.soDoGhe.create({
+    data: { TenSoDo: "Sơ đồ chuẩn 5x5", SoHang: 5, SoCot: 5 },
+  });
+
+  const phong1 = await prisma.phongChieu.create({
+    data: { TenPhong: "Phòng chiếu 01", MaLoaiPhong: lp2D.MaLoaiPhong, MaSoDo: soDo.MaSoDo },
+  });
+  const phong2 = await prisma.phongChieu.create({
+    data: { TenPhong: "Phòng chiếu 02 (IMAX)", MaLoaiPhong: lpIMAX.MaLoaiPhong, MaSoDo: soDo.MaSoDo },
+  });
+  console.log("✅ Đã tạo Loại phòng, Sơ đồ ghế và Phòng chiếu");
+
+  // ========================
+  // Tạo loại ghế & ghế
+  // ========================
+  const lgThuong = await prisma.loaiGhe.create({
+    data: { TenLoaiGhe: "Thường", PhuThu: 0.0 },
+  });
+  const lgVIP = await prisma.loaiGhe.create({
+    data: { TenLoaiGhe: "VIP", PhuThu: 15000.0 },
+  });
+  const lgSweetbox = await prisma.loaiGhe.create({
+    data: { TenLoaiGhe: "Sweetbox", PhuThu: 30000.0 },
+  });
+
+  // Tạo ghế cho phong1 & phong2
+  // Hàng A, B: Thường | Hàng C, D: VIP | Hàng E: Sweetbox
+  const rows = ["A", "B", "C", "D", "E"];
+  const seatsRoom1: any[] = [];
+  const seatsRoom2: any[] = [];
+
+  for (const r of rows) {
+    let maLoaiGhe = lgThuong.MaLoaiGhe;
+    if (r === "C" || r === "D") maLoaiGhe = lgVIP.MaLoaiGhe;
+    if (r === "E") maLoaiGhe = lgSweetbox.MaLoaiGhe;
+
+    for (let c = 1; c <= 5; c++) {
+      seatsRoom1.push({
+        ViTriDay: r,
+        ViTriCot: c,
+        MaPhong: phong1.MaPhong,
+        MaLoaiGhe: maLoaiGhe,
+      });
+      seatsRoom2.push({
+        ViTriDay: r,
+        ViTriCot: c,
+        MaPhong: phong2.MaPhong,
+        MaLoaiGhe: maLoaiGhe,
+      });
+    }
+  }
+
+  // Create seats sequentially or via createMany
+  await prisma.ghe.createMany({ data: seatsRoom1 });
+  await prisma.ghe.createMany({ data: seatsRoom2 });
+
+  const allGhesPhong1 = await prisma.ghe.findMany({ where: { MaPhong: phong1.MaPhong } });
+  const allGhesPhong2 = await prisma.ghe.findMany({ where: { MaPhong: phong2.MaPhong } });
+  console.log(`✅ Đã tạo xong 50 ghế (25 ghế/phòng)`);
+
+  // ========================
+  // Tạo loại ngày
+  // ========================
+  const lnThuong = await prisma.loaiNgay.create({
+    data: { TenLoaiNgay: "Ngày thường", PhuThu: 0.0 },
+  });
+  const lnCuoiTuan = await prisma.loaiNgay.create({
+    data: { TenLoaiNgay: "Cuối tuần", PhuThu: 15000.0 },
+  });
+  const lnNgayLe = await prisma.loaiNgay.create({
+    data: { TenLoaiNgay: "Ngày lễ", PhuThu: 30000.0 },
+  });
+  console.log("✅ Đã tạo Loại ngày");
+
+  // ========================
+  // Tạo dữ liệu Phim (10 phim)
   // ========================
   const phimData = [
     {
       TenPhim: "Avengers: Endgame",
       ThoiLuong: 181,
       TheLoai: "Hành động, Khoa học viễn tưởng",
-      NgayKhoiChieu: new Date("2024-05-01"),
-      NgayKetThuc: new Date("2024-07-01"),
+      NgayKhoiChieu: new Date("2026-05-01"),
+      NgayKetThuc: new Date("2026-07-01"),
       DaoDien: "Anthony Russo, Joe Russo",
       DienVien: "Robert Downey Jr., Chris Evans, Mark Ruffalo, Chris Hemsworth",
-      GioiHanTuoi: "C13",
-      NoiDung:
-        "Sau sự kiện thảm khốc của Infinity War, các Avengers còn sống phải đối mặt với nhiệm vụ cuối cùng để đảo ngược hành động của Thanos và khôi phục lại trật tự vũ trụ.",
+      GioiHanTuoi: GioiHanTuoi.C13,
+      NoiDung: "Sau sự kiện thảm khốc của Infinity War, các Avengers còn sống phải đối mặt với nhiệm vụ cuối cùng.",
       Trailer: "https://www.youtube.com/watch?v=TcMBFSGVi1c",
       HinhAnh: "https://example.com/images/avengers-endgame.jpg",
       KhaDung: true,
@@ -117,13 +214,12 @@ async function main() {
       TenPhim: "Inception",
       ThoiLuong: 148,
       TheLoai: "Khoa học viễn tưởng, Hành động",
-      NgayKhoiChieu: new Date("2024-06-15"),
+      NgayKhoiChieu: new Date("2026-06-15"),
       NgayKetThuc: null,
       DaoDien: "Christopher Nolan",
       DienVien: "Leonardo DiCaprio, Joseph Gordon-Levitt, Elliot Page",
-      GioiHanTuoi: "C13",
-      NoiDung:
-        "Dom Cobb là tên trộm tài năng với khả năng xâm nhập vào giấc mơ của người khác để đánh cắp bí mật từ tiềm thức của họ.",
+      GioiHanTuoi: GioiHanTuoi.C13,
+      NoiDung: "Dom Cobb là tên trộm tài năng với khả năng xâm nhập vào giấc mơ của người khác.",
       Trailer: "https://www.youtube.com/watch?v=YoHD9XEInc0",
       HinhAnh: "https://example.com/images/inception.jpg",
       KhaDung: true,
@@ -132,13 +228,12 @@ async function main() {
       TenPhim: "The Lion King",
       ThoiLuong: 118,
       TheLoai: "Hoạt hình, Gia đình",
-      NgayKhoiChieu: new Date("2024-07-01"),
-      NgayKetThuc: new Date("2024-09-01"),
+      NgayKhoiChieu: new Date("2026-07-01"),
+      NgayKetThuc: new Date("2026-09-01"),
       DaoDien: "Jon Favreau",
       DienVien: "Donald Glover, Beyoncé, Seth Rogen, Chiwetel Ejiofor",
-      GioiHanTuoi: "P",
-      NoiDung:
-        "Simba, một con sư tử con, phải trốn chạy khỏi vương quốc của mình sau cái chết bi thảm của cha mình Mufasa.",
+      GioiHanTuoi: GioiHanTuoi.P,
+      NoiDung: "Simba, một con sư tử con, phải trốn chạy khỏi vương quốc của mình sau cái chết bi thảm của cha.",
       Trailer: "https://www.youtube.com/watch?v=7TavVZMewpY",
       HinhAnh: "https://example.com/images/lion-king.jpg",
       KhaDung: true,
@@ -147,13 +242,12 @@ async function main() {
       TenPhim: "Joker",
       ThoiLuong: 122,
       TheLoai: "Tâm lý, Tội phạm",
-      NgayKhoiChieu: new Date("2024-08-01"),
+      NgayKhoiChieu: new Date("2026-08-01"),
       NgayKetThuc: null,
       DaoDien: "Todd Phillips",
       DienVien: "Joaquin Phoenix, Robert De Niro, Zazie Beetz",
-      GioiHanTuoi: "C18",
-      NoiDung:
-        "Câu chuyện về Arthur Fleck, một diễn viên hài bị xã hội ruồng bỏ, dần trở thành tên tội phạm huyền thoại Joker.",
+      GioiHanTuoi: GioiHanTuoi.C18,
+      NoiDung: "Câu chuyện về Arthur Fleck, một diễn viên hài bị xã hội ruồng bỏ, dần trở thành Joker.",
       Trailer: "https://www.youtube.com/watch?v=zAGVQLHvwOY",
       HinhAnh: "https://example.com/images/joker.jpg",
       KhaDung: true,
@@ -162,13 +256,12 @@ async function main() {
       TenPhim: "Spider-Man: No Way Home",
       ThoiLuong: 148,
       TheLoai: "Hành động, Khoa học viễn tưởng",
-      NgayKhoiChieu: new Date("2024-09-15"),
-      NgayKetThuc: new Date("2024-11-15"),
+      NgayKhoiChieu: new Date("2026-09-15"),
+      NgayKetThuc: new Date("2026-11-15"),
       DaoDien: "Jon Watts",
       DienVien: "Tom Holland, Zendaya, Benedict Cumberbatch, Jamie Foxx",
-      GioiHanTuoi: "C13",
-      NoiDung:
-        "Peter Parker tìm đến Doctor Strange để giúp thế giới quên rằng anh là Spider-Man, nhưng phép thuật đã mở ra cánh cửa đến đa vũ trụ.",
+      GioiHanTuoi: GioiHanTuoi.C13,
+      NoiDung: "Peter Parker tìm đến Doctor Strange để giúp thế giới quên rằng anh là Spider-Man.",
       Trailer: "https://www.youtube.com/watch?v=JfVOs4VSpmA",
       HinhAnh: "https://example.com/images/spiderman-no-way-home.jpg",
       KhaDung: true,
@@ -177,29 +270,177 @@ async function main() {
       TenPhim: "Interstellar",
       ThoiLuong: 169,
       TheLoai: "Khoa học viễn tưởng, Phiêu lưu",
-      NgayKhoiChieu: new Date("2024-10-01"),
+      NgayKhoiChieu: new Date("2026-10-01"),
       NgayKetThuc: null,
       DaoDien: "Christopher Nolan",
       DienVien: "Matthew McConaughey, Anne Hathaway, Jessica Chastain",
-      GioiHanTuoi: "C13",
-      NoiDung:
-        "Một nhóm nhà du hành vũ trụ du hành qua lỗ sâu trong vũ trụ để đảm bảo sự sống còn của nhân loại.",
+      GioiHanTuoi: GioiHanTuoi.C13,
+      NoiDung: "Một nhóm nhà du hành vũ trụ du hành qua lỗ sâu trong vũ trụ để tìm kiếm hy vọng cho loài người.",
       Trailer: "https://www.youtube.com/watch?v=zSWdZVtXT7E",
       HinhAnh: "https://example.com/images/interstellar.jpg",
       KhaDung: true,
     },
+    {
+      TenPhim: "Parasite",
+      ThoiLuong: 132,
+      TheLoai: "Tâm lý, Giật gân",
+      NgayKhoiChieu: new Date("2026-05-15"),
+      NgayKetThuc: new Date("2026-07-15"),
+      DaoDien: "Bong Joon Ho",
+      DienVien: "Song Kang-ho, Lee Sun-kyun, Cho Yeo-jeong",
+      GioiHanTuoi: GioiHanTuoi.C18,
+      NoiDung: "Một gia đình nghèo tìm cách thâm nhập vào cuộc sống của một gia đình giàu có.",
+      Trailer: "https://www.youtube.com/watch?v=SEUXfv875pk",
+      HinhAnh: "https://example.com/images/parasite.jpg",
+      KhaDung: true,
+    },
+    {
+      TenPhim: "Inside Out 2",
+      ThoiLuong: 96,
+      TheLoai: "Hoạt hình, Gia đình, Hài hước",
+      NgayKhoiChieu: new Date("2026-06-01"),
+      NgayKetThuc: new Date("2026-08-30"),
+      DaoDien: "Kelsey Mann",
+      DienVien: "Amy Poehler, Phyllis Smith, Lewis Black",
+      GioiHanTuoi: GioiHanTuoi.P,
+      NoiDung: "Tâm trí của cô bé Riley khi bước vào tuổi dậy thì với những cảm xúc mới xuất hiện.",
+      Trailer: "https://www.youtube.com/watch?v=LEjhY15eCx0",
+      HinhAnh: "https://example.com/images/inside-out-2.jpg",
+      KhaDung: true,
+    },
+    {
+      TenPhim: "Dune: Part Two",
+      ThoiLuong: 166,
+      TheLoai: "Khoa học viễn tưởng, Phiêu lưu",
+      NgayKhoiChieu: new Date("2026-03-01"),
+      NgayKetThuc: new Date("2026-05-30"),
+      DaoDien: "Denis Villeneuve",
+      DienVien: "Timothée Chalamet, Zendaya, Rebecca Ferguson",
+      GioiHanTuoi: GioiHanTuoi.C13,
+      NoiDung: "Paul Atreides tìm kiếm sự trả thù chống lại những kẻ đã tiêu diệt gia đình mình.",
+      Trailer: "https://www.youtube.com/watch?v=Way9Dexny3w",
+      HinhAnh: "https://example.com/images/dune-part-2.jpg",
+      KhaDung: true,
+    },
+    {
+      TenPhim: "Spirited Away",
+      ThoiLuong: 125,
+      TheLoai: "Hoạt hình, Kỳ ảo",
+      NgayKhoiChieu: new Date("2026-01-01"),
+      NgayKetThuc: null,
+      DaoDien: "Hayao Miyazaki",
+      DienVien: "Rumi Hiiragi, Miyu Irino, Mari Natsuki",
+      GioiHanTuoi: GioiHanTuoi.P,
+      NoiDung: "Cô bé Chihiro lạc vào vùng đất linh hồn bí ẩn để cứu cha mẹ mình.",
+      Trailer: "https://www.youtube.com/watch?v=ByXuk9QqQkk",
+      HinhAnh: "https://example.com/images/spirited-away.jpg",
+      KhaDung: true,
+    },
   ];
 
+  const createdMovies: any[] = [];
   for (const phim of phimData) {
-    await prisma.phim.create({ data: phim });
+    const p = await prisma.phim.create({ data: phim });
+    createdMovies.push(p);
     console.log(`🎬 Đã tạo phim: ${phim.TenPhim}`);
+  }
+
+  // ========================
+  // Tạo Suất chiếu & Ghế suất chiếu (để test ràng buộc xóa)
+  // ========================
+  // Suất chiếu 1: Phim Avengers: Endgame (Room 2 - IMAX) vào ngày 2026-06-01
+  const sc1 = await prisma.suatChieu.create({
+    data: {
+      MaPhim: createdMovies[0].MaPhim, // Avengers: Endgame
+      MaPhong: phong2.MaPhong,
+      MaLoaiNgay: lnCuoiTuan.MaLoaiNgay,
+      NgayChieu: new Date("2026-06-01"),
+      GioChieu: new Date("2026-05-23T19:00:00Z"), // 19:00
+      GiaVeGoc: 90000.0,
+    },
+  });
+
+  // Tạo Ghế suất chiếu cho sc1
+  const gsc1Data = allGhesPhong2.map((g) => {
+    // Giá vé = Giá vé gốc + phụ thu phòng + phụ thu ghế
+    const phuThuPhong = 50000.0; // IMAX
+    let phuThuGhe = 0.0;
+    if (g.MaLoaiGhe === lgVIP.MaLoaiGhe) phuThuGhe = 15000.0;
+    if (g.MaLoaiGhe === lgSweetbox.MaLoaiGhe) phuThuGhe = 30000.0;
+
+    return {
+      MaSuatChieu: sc1.MaSuatChieu,
+      MaGhe: g.MaGhe,
+      TrangThai: TrangThaiGheSuatChieu.TRONG,
+      GiaVe: 90000.0 + phuThuPhong + phuThuGhe,
+    };
+  });
+  await prisma.gheSuatChieu.createMany({ data: gsc1Data });
+  console.log(`✅ Đã tạo Suất chiếu 1 & 25 Ghế suất chiếu cho phim Avengers: Endgame`);
+
+  // Suất chiếu 2: Phim Inside Out 2 (Room 1) ngày 2026-06-10 (Có cả vé bán ra để test chặn xóa)
+  const sc2 = await prisma.suatChieu.create({
+    data: {
+      MaPhim: createdMovies[7].MaPhim, // Inside Out 2
+      MaPhong: phong1.MaPhong,
+      MaLoaiNgay: lnThuong.MaLoaiNgay,
+      NgayChieu: new Date("2026-06-10"),
+      GioChieu: new Date("2026-05-23T14:30:00Z"), // 14:30
+      GiaVeGoc: 70000.0,
+    },
+  });
+
+  // Tạo Ghế suất chiếu cho sc2
+  const gsc2Data = allGhesPhong1.map((g) => {
+    let phuThuGhe = 0.0;
+    if (g.MaLoaiGhe === lgVIP.MaLoaiGhe) phuThuGhe = 15000.0;
+    if (g.MaLoaiGhe === lgSweetbox.MaLoaiGhe) phuThuGhe = 30000.0;
+
+    return {
+      MaSuatChieu: sc2.MaSuatChieu,
+      MaGhe: g.MaGhe,
+      TrangThai: TrangThaiGheSuatChieu.TRONG,
+      GiaVe: 70000.0 + phuThuGhe,
+    };
+  });
+  await prisma.gheSuatChieu.createMany({ data: gsc2Data });
+  console.log(`✅ Đã tạo Suất chiếu 2 & 25 Ghế suất chiếu cho phim Inside Out 2`);
+
+  // Lấy ra 1 ghế suất chiếu của sc2 để giả lập bán vé
+  const randomGsc = await prisma.gheSuatChieu.findFirst({
+    where: { MaSuatChieu: sc2.MaSuatChieu },
+  });
+
+  if (randomGsc) {
+    // Cập nhật trạng thái ghế là DA_DAT
+    await prisma.gheSuatChieu.update({
+      where: { MaGheSuatChieu: randomGsc.MaGheSuatChieu },
+      data: { TrangThai: TrangThaiGheSuatChieu.DA_DAT },
+    });
+
+    // Tạo Phiếu đặt vé + Chi tiết đặt vé
+    const phieu = await prisma.phieuDatVe.create({
+      data: {
+        MaKhachHang: customer.KhachHang?.MaKhachHang || null,
+        TongTien: randomGsc.GiaVe,
+        TrangThai: "DA_THANH_TOAN",
+        ChiTietDatVes: {
+          create: {
+            MaGheSuatChieu: randomGsc.MaGheSuatChieu,
+            GiaVe: randomGsc.GiaVe,
+          },
+        },
+      },
+    });
+
+    console.log(`🎟️ Đã giả lập bán 1 vé thành công cho phim Inside Out 2 (MaPhieuDat: ${phieu.MaPhieuDat})`);
   }
 
   console.log("\n✨ Seed dữ liệu hoàn tất!");
   console.log("📋 Tài khoản mặc định:");
-  console.log("   Admin    - TenDangNhap: admin        | MatKhau: 123456");
+  console.log("   Admin     - TenDangNhap: admin        | MatKhau: 123456");
   console.log("   Nhân viên - TenDangNhap: nhanvien01  | MatKhau: 123456");
-  console.log("   Khách hàng - TenDangNhap: khachhang01 | MatKhau: 123456");
+  console.log("   Khách hàng- TenDangNhap: khachhang01 | MatKhau: 123456");
 }
 
 main()

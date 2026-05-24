@@ -28,6 +28,7 @@ export const sendSuccess = <T>(
   return res.status(statusCode).json(response);
 };
 
+
 /**
  * Send a created response (201)
  */
@@ -37,6 +38,39 @@ export const sendCreated = <T>(
   data?: T,
 ): Response => {
   return sendSuccess(res, message, data, 201);
+};
+
+export interface PaginationMetadata {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+}
+
+export interface PaginatedApiResponse<T> {
+  success: boolean;
+  message: string;
+  data: T[];
+  pagination: PaginationMetadata;
+}
+
+/**
+ * Send a paginated success response
+ */
+export const sendPaginatedSuccess = <T>(
+  res: Response,
+  message: string,
+  data: T[],
+  pagination: PaginationMetadata,
+  statusCode = 200,
+): Response => {
+  const response: PaginatedApiResponse<T> = {
+    success: true,
+    message,
+    data,
+    pagination,
+  };
+  return res.status(statusCode).json(response);
 };
 
 /**

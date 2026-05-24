@@ -2,6 +2,7 @@ import './config/env'; // Load and validate env vars first
 import app from './app';
 import { env } from './config/env';
 import prisma from './config/prisma';
+import { startReleaseExpiredSeatHoldsJob } from './jobs/releaseExpiredSeatHolds.job';
 
 const PORT = env.PORT;
 
@@ -34,6 +35,9 @@ const startServer = async (): Promise<void> => {
     console.log('✅ Kết nối cơ sở dữ liệu thành công');
 
     app.listen(PORT, () => {
+      if (env.NODE_ENV !== 'test') {
+        startReleaseExpiredSeatHoldsJob();
+      }
       console.log('');
       console.log('🎬 ================================================');
       console.log('   Cinema Booking System Backend');
