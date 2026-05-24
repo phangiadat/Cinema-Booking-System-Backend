@@ -60,14 +60,20 @@ export const createPaidBookingTransaction = async (
   maThamChieuDoiTac: string,
   tongTien: number,
   seatPrices: { maGheSuatChieu: string; price: number }[],
+  maTaiKhoan: string,
 ) => {
+  const now = new Date();
+
   return prisma.$transaction(async (tx) => {
-    // 1. Update GheSuatChieu to DA_DAT and clear hold info
+    // 1. Update GheSuatChieu to DA_DAT – strictly re-verify ownership and expiry
+    //    to guard against race conditions between the pre-check SELECT and this UPDATE.
     const updateResult = await tx.gheSuatChieu.updateMany({
       where: {
         MaSuatChieu: maSuatChieu,
         MaGheSuatChieu: { in: seatIds },
         TrangThai: 'DANG_GIU',
+        MaTaiKhoanGiu: maTaiKhoan,          // must still be owned by this user
+        ThoiGianGiuGhe: { gte: now },        // hold must not have expired
       },
       data: {
         TrangThai: 'DA_DAT',
@@ -77,7 +83,7 @@ export const createPaidBookingTransaction = async (
     });
 
     if (updateResult.count !== seatIds.length) {
-      throw new BadRequestError('Một số ghế đã hết hạn giữ hoặc trạng thái không hợp lệ.');
+      throw new BadRequestError('Một số ghế đã hết hạn giữ hoặc không còn thuộc quyền sở hữu của bạn.');
     }
 
     // 2. Create PhieuDatVe

@@ -355,7 +355,7 @@ describe('🖥️ Staff Ticket Validation and Check-in Integration Tests', () =>
 
       expect(res.status).toBe(200);
       expect(res.body.data.valid).toBe(false);
-      expect(res.body.data.reason).toBe('Vé không trong thời gian check-in cho phép');
+      expect(res.body.data.reason).toBe('Chưa đến giờ check-in (trước 30 phút suất chiếu)');
     });
   });
 

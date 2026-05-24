@@ -71,7 +71,10 @@ export const validateTicket = async (
     return { valid: false, reason: 'Vé đang hoàn tiền / đã hoàn tiền' };
   }
 
-  // 7. Check showtime validity window (from 30 minutes before GioChieu until showtime ends)
+  // 7. Check showtime validity window.
+  //    Allow check-in from 30 minutes before showtime until the movie ends.
+  //    Staff can still scan tickets after a showtime has started (latecomers),
+  //    but not before the pre-entry window or after the movie has ended.
   const suatChieu = ticket.GheSuatChieu.SuatChieu;
   const showtimeStart = new Date(suatChieu.NgayChieu);
   const gioChieu = new Date(suatChieu.GioChieu);
@@ -80,8 +83,12 @@ export const validateTicket = async (
   const showtimeEnd = new Date(showtimeStart.getTime() + suatChieu.Phim.ThoiLuong * 60 * 1000);
   const checkInStart = new Date(showtimeStart.getTime() - 30 * 60 * 1000);
 
-  if (now < checkInStart || now > showtimeEnd) {
-    return { valid: false, reason: 'Vé không trong thời gian check-in cho phép' };
+  if (now < checkInStart) {
+    return { valid: false, reason: 'Chưa đến giờ check-in (trước 30 phút suất chiếu)' };
+  }
+
+  if (now > showtimeEnd) {
+    return { valid: false, reason: 'Suất chiếu đã kết thúc, không thể check-in' };
   }
 
   // 8. Return validation success details

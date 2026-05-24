@@ -47,8 +47,8 @@ export const giuGhe = async (
 
   // 2. Execute transaction
   return prisma.$transaction(async (tx) => {
-    // Release expired holds for this showtime first
-    await releaseExpiredHolds(now, maSuatChieu);
+    // Release expired holds for this showtime first (inside tx for consistency)
+    await releaseExpiredHolds(now, maSuatChieu, tx);
 
     // Call repository to execute conditional updates
     await holdSeats(tx, maSuatChieu, maTaiKhoan, uniqueSeatIds, expireAt, now);
@@ -93,8 +93,8 @@ export const huyGiuGhe = async (
 
   // Execute transaction
   return prisma.$transaction(async (tx) => {
-    // Release expired holds for this showtime first
-    await releaseExpiredHolds(now, maSuatChieu);
+    // Release expired holds for this showtime first (inside tx for consistency)
+    await releaseExpiredHolds(now, maSuatChieu, tx);
 
     // Call repository to release user's held seats
     await cancelHeldSeats(tx, maSuatChieu, maTaiKhoan, uniqueSeatIds);
@@ -197,6 +197,7 @@ export const thanhToanGiaLap = async (
     maThamChieuDoiTac,
     totalAmount,
     seatPrices,
+    maTaiKhoan,
   );
 
   return {
