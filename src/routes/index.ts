@@ -10,6 +10,7 @@ import taiKhoanRoutes from './taiKhoan.routes';
 import staffBanVeRoutes from './staffBanVe.routes';
 import staffSoatVeRoutes from './staffSoatVe.routes';
 import staffLichLamViecRoutes from './staffLichLamViec.routes';
+import staffHoSoRoutes from './staffHoSo.routes';
 import { sendSuccess } from '../utils/response';
 
 const router = Router();
@@ -39,5 +40,6 @@ router.use('/tai-khoan', taiKhoanRoutes);
 router.use('/', staffBanVeRoutes);
 router.use('/', staffSoatVeRoutes);
 router.use('/', staffLichLamViecRoutes);
+router.use('/', staffHoSoRoutes);
 
 export default router;
