@@ -132,22 +132,18 @@ export const checkInTicket = async (
   const suatChieu = ticket!.GheSuatChieu.SuatChieu;
 
   return {
-    success: true,
-    message: 'Check-in vé thành công',
-    data: {
-      MaChiTietDat: ticket!.MaChiTietDat,
-      ThoiGianCheckIn: now,
-      NhanVienCheckIn: {
-        MaNhanVien: staff.MaNhanVien,
-        HoTen: staff.TaiKhoan.HoTen,
-      },
-      TicketInfo: {
-        TenPhim: suatChieu.Phim.TenPhim,
-        TenPhong: suatChieu.PhongChieu.TenPhong,
-        Ghe: `${ticket!.GheSuatChieu.Ghe.ViTriDay}${ticket!.GheSuatChieu.Ghe.ViTriCot}`,
-        NgayChieu: suatChieu.NgayChieu,
-        GioChieu: suatChieu.GioChieu,
-      },
+    MaChiTietDat: ticket!.MaChiTietDat,
+    ThoiGianCheckIn: now,
+    NhanVienCheckIn: {
+      MaNhanVien: staff.MaNhanVien,
+      HoTen: staff.TaiKhoan.HoTen,
+    },
+    TicketInfo: {
+      TenPhim: suatChieu.Phim.TenPhim,
+      TenPhong: suatChieu.PhongChieu.TenPhong,
+      Ghe: `${ticket!.GheSuatChieu.Ghe.ViTriDay}${ticket!.GheSuatChieu.Ghe.ViTriCot}`,
+      NgayChieu: suatChieu.NgayChieu,
+      GioChieu: suatChieu.GioChieu,
     },
   };
 };

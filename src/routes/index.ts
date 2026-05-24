@@ -8,6 +8,7 @@ import danhgiaRoutes from './danhgia.routes';
 import hoantienRoutes from './hoantien.routes';
 import taiKhoanRoutes from './taiKhoan.routes';
 import staffBanVeRoutes from './staffBanVe.routes';
+import staffSoatVeRoutes from './staffSoatVe.routes';
 import { sendSuccess } from '../utils/response';
 
 const router = Router();
@@ -35,5 +36,6 @@ router.use('/danh-gia', danhgiaRoutes);
 router.use('/hoan-tien', hoantienRoutes);
 router.use('/tai-khoan', taiKhoanRoutes);
 router.use('/', staffBanVeRoutes);
+router.use('/', staffSoatVeRoutes);
 
 export default router;
