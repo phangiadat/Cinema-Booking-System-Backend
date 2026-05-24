@@ -7,6 +7,7 @@ import lichsuRoutes from './lichsu.routes';
 import danhgiaRoutes from './danhgia.routes';
 import hoantienRoutes from './hoantien.routes';
 import taiKhoanRoutes from './taiKhoan.routes';
+import staffBanVeRoutes from './staffBanVe.routes';
 import { sendSuccess } from '../utils/response';
 
 const router = Router();
@@ -33,5 +34,6 @@ router.use('/lich-su-giao-dich', lichsuRoutes);
 router.use('/danh-gia', danhgiaRoutes);
 router.use('/hoan-tien', hoantienRoutes);
 router.use('/tai-khoan', taiKhoanRoutes);
+router.use('/', staffBanVeRoutes);
 
 export default router;
