@@ -4,7 +4,7 @@ import * as staffBanVeController from '../controllers/staffBanVe.controller';
 import { authMiddleware } from '../middlewares/auth.middleware';
 import { requireRoles } from '../middlewares/role.middleware';
 import { validate } from '../middlewares/validate.middleware';
-import { staffShowtimeQuerySchema } from '../validators/staffBanVe.validator';
+import { staffShowtimeQuerySchema, maSuatChieuParamSchema } from '../validators/staffBanVe.validator';
 
 const router = Router();
 
@@ -19,6 +19,19 @@ router.get(
   requireRoles(Role.STAFF),
   validate(staffShowtimeQuerySchema, 'query'),
   staffBanVeController.getDanhSachSuatChieu,
+);
+
+/**
+ * @route   GET /api/v1/staff/ban-ve/suat-chieu/:maSuatChieu/ghe
+ * @desc    Lấy sơ đồ ghế và trạng thái đặt vé cho nhân viên
+ * @access  Private (STAFF only)
+ */
+router.get(
+  '/staff/ban-ve/suat-chieu/:maSuatChieu/ghe',
+  authMiddleware,
+  requireRoles(Role.STAFF),
+  validate(maSuatChieuParamSchema, 'params'),
+  staffBanVeController.getSeatMapSuatChieu,
 );
 
 export default router;

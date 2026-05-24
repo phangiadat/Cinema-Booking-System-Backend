@@ -40,3 +40,24 @@ export const getDanhSachSuatChieu = async (
     next(error);
   }
 };
+
+/**
+ * GET /api/v1/staff/ban-ve/suat-chieu/:maSuatChieu/ghe
+ * Lấy sơ đồ ghế và trạng thái đặt vé cho nhân viên
+ */
+export const getSeatMapSuatChieu = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> => {
+  try {
+    const maTaiKhoan = req.user!.maTaiKhoan;
+    const maSuatChieu = req.params.maSuatChieu as string;
+
+    const seatMap = await staffBanVeService.getSeatMapForStaff(maTaiKhoan, maSuatChieu);
+
+    sendSuccess(res, 'Lấy sơ đồ ghế thành công', seatMap);
+  } catch (error) {
+    next(error);
+  }
+};
