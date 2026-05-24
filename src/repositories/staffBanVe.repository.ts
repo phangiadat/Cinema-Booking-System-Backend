@@ -1,4 +1,4 @@
-import { Prisma, Role, TaiKhoan, NhanVien, SuatChieu } from '@prisma/client';
+import { Prisma, Role, TaiKhoan, NhanVien, SuatChieu, PhuongThucThanhToan } from '@prisma/client';
 import prisma from '../config/prisma';
 import { BadRequestError } from '../utils/errors';
 
@@ -158,3 +158,110 @@ export const releaseExpiredHolds = async (now: Date, maSuatChieu: string) => {
     },
   });
 };
+
+/**
+ * Perform POS counter ticket selling in a single transaction
+ */
+export const sellTicketsAtCounterTransaction = async (
+  maNhanVien: string,
+  maSuatChieu: string,
+  seatIds: string[],
+  phuongThuc: PhuongThucThanhToan,
+  maGiaoDichNgoai: string | undefined,
+  now: Date,
+  calculatedPrices: { seatId: string; price: number }[],
+  total: number,
+) => {
+  return prisma.$transaction(async (tx) => {
+    // 1. Release expired holds for this showtime first (within transaction)
+    await tx.gheSuatChieu.updateMany({
+      where: {
+        MaSuatChieu: maSuatChieu,
+        MaGheSuatChieu: { in: seatIds },
+        TrangThai: 'DANG_GIU',
+        ThoiGianGiuGhe: { lt: now },
+      },
+      data: {
+        TrangThai: 'TRONG',
+        ThoiGianGiuGhe: null,
+        MaTaiKhoanGiu: null,
+      },
+    });
+
+    // 2. Lock and reserve seats: check if they are TRONG
+    const result = await tx.gheSuatChieu.updateMany({
+      where: {
+        MaGheSuatChieu: { in: seatIds },
+        MaSuatChieu: maSuatChieu,
+        KhaDung: true,
+        TrangThai: 'TRONG',
+      },
+      data: {
+        TrangThai: 'DA_DAT',
+        ThoiGianGiuGhe: null,
+        MaTaiKhoanGiu: null,
+      },
+    });
+
+    // If updated count does not equal requested count, throw error to rollback
+    if (result.count !== seatIds.length) {
+      throw new BadRequestError('Ghế đã được đặt hoặc đang được giữ');
+    }
+
+    // 3. Create PhieuDatVe
+    const phieuDatVe = await tx.phieuDatVe.create({
+      data: {
+        MaKhachHang: null,
+        MaNhanVien: maNhanVien,
+        TongTien: total,
+        TrangThai: 'DA_THANH_TOAN',
+        KhaDung: true,
+      },
+    });
+
+    // 4. Create ChiTietDatVe for each seat
+    for (const item of calculatedPrices) {
+      await tx.chiTietDatVe.create({
+        data: {
+          MaPhieuDat: phieuDatVe.MaPhieuDat,
+          MaGheSuatChieu: item.seatId,
+          GiaVe: item.price,
+          KhaDung: true,
+        },
+      });
+    }
+
+    // Explicitly update selected GheSuatChieu to TrangThai = DA_DAT, ThoiGianGiuGhe = null, MaTaiKhoanGiu = null after creating ChiTietDatVe
+    await tx.gheSuatChieu.updateMany({
+      where: {
+        MaGheSuatChieu: { in: seatIds },
+        MaSuatChieu: maSuatChieu,
+      },
+      data: {
+        TrangThai: 'DA_DAT',
+        ThoiGianGiuGhe: null,
+        MaTaiKhoanGiu: null,
+      },
+    });
+
+    // 5. Create GiaoDich
+    const externalTxCode = maGiaoDichNgoai || 'POS_' + Math.floor(100000 + Math.random() * 900000).toString() + '_' + Date.now().toString();
+
+    const giaoDich = await tx.giaoDich.create({
+      data: {
+        MaPhieuDat: phieuDatVe.MaPhieuDat,
+        PhuongThuc: phuongThuc,
+        SoTien: total,
+        TrangThai: 'THANH_CONG',
+        MaGiaoDichNgoai: externalTxCode,
+        KhaDung: true,
+      },
+    });
+
+    return {
+      phieuDatVe,
+      giaoDich,
+    };
+  });
+};
+

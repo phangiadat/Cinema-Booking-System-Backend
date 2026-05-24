@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import * as staffBanVeService from '../services/staffBanVe.service';
 import { sendSuccess, sendPaginatedSuccess } from '../utils/response';
-import { StaffShowtimeQueryInput } from '../validators/staffBanVe.validator';
+import { StaffShowtimeQueryInput, StaffSellTicketInput } from '../validators/staffBanVe.validator';
 
 /**
  * GET /api/v1/staff/ban-ve/suat-chieu
@@ -57,6 +57,27 @@ export const getSeatMapSuatChieu = async (
     const seatMap = await staffBanVeService.getSeatMapForStaff(maTaiKhoan, maSuatChieu);
 
     sendSuccess(res, 'Lấy sơ đồ ghế thành công', seatMap);
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * POST /api/v1/staff/ban-ve/thanh-toan
+ * Thanh toán vé tại quầy cho nhân viên
+ */
+export const thanhToanBanVe = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> => {
+  try {
+    const maTaiKhoan = req.user!.maTaiKhoan;
+    const body = req.body as StaffSellTicketInput;
+
+    const result = await staffBanVeService.sellTicketsAtCounter(maTaiKhoan, body);
+
+    sendSuccess(res, 'Thanh toán vé tại quầy thành công', result);
   } catch (error) {
     next(error);
   }

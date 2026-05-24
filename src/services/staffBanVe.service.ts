@@ -1,12 +1,15 @@
 import { Role, GioiHanTuoi } from '@prisma/client';
+import prisma from '../config/prisma';
 import {
   findStaffByAccountId,
   findAvailableShowtimesForStaff,
   findStaffSeatMap,
   releaseExpiredHolds,
+  sellTicketsAtCounterTransaction,
   ShowtimeFilters,
 } from '../repositories/staffBanVe.repository';
-import { UnauthorizedError, NotFoundError } from '../utils/errors';
+import { UnauthorizedError, NotFoundError, BadRequestError } from '../utils/errors';
+import { StaffSellTicketInput } from '../validators/staffBanVe.validator';
 
 export interface StaffShowtimeResponse {
   MaSuatChieu: string;
@@ -241,5 +244,121 @@ export const getSeatMapForStaff = async (
       CauTruc: null,
     },
     Ghe: seats,
+  };
+};
+
+/**
+ * Sell tickets at counter (POS check-out)
+ */
+export const sellTicketsAtCounter = async (
+  maTaiKhoan: string,
+  body: StaffSellTicketInput,
+) => {
+  // 1. Verify active staff account
+  const staff = await findStaffByAccountId(maTaiKhoan);
+  if (!staff) {
+    throw new UnauthorizedError('Tài khoản đã bị vô hiệu hóa hoặc không có quyền nhân viên');
+  }
+
+  const now = new Date();
+
+  // 2. Fetch showtime to validate existence, start time, and active status
+  const sc = await prisma.suatChieu.findFirst({
+    where: {
+      MaSuatChieu: body.MaSuatChieu,
+      KhaDung: true,
+    },
+    include: {
+      Phim: true,
+      PhongChieu: {
+        include: {
+          LoaiPhong: true,
+        },
+      },
+      LoaiNgay: true,
+    },
+  });
+
+  if (!sc) {
+    throw new NotFoundError(`Không tìm thấy suất chiếu với mã: ${body.MaSuatChieu}`);
+  }
+
+  // Combine NgayChieu and GioChieu
+  const showtimeStart = new Date(sc.NgayChieu);
+  const gioChieu = new Date(sc.GioChieu);
+  showtimeStart.setHours(gioChieu.getHours(), gioChieu.getMinutes(), gioChieu.getSeconds());
+
+  if (showtimeStart <= now) {
+    throw new BadRequestError('Suất chiếu đã bắt đầu hoặc đã diễn ra, không thể bán vé.');
+  }
+
+  // 3. Fetch and validate selected seats
+  const seats = await prisma.gheSuatChieu.findMany({
+    where: {
+      MaGheSuatChieu: { in: body.DanhSachMaGheSuatChieu },
+      MaSuatChieu: body.MaSuatChieu,
+      KhaDung: true,
+    },
+    include: {
+      Ghe: {
+        include: {
+          LoaiGhe: true,
+        },
+      },
+    },
+  });
+
+  if (seats.length !== body.DanhSachMaGheSuatChieu.length) {
+    throw new BadRequestError('Một hoặc nhiều ghế được chọn không tồn tại hoặc không hợp lệ.');
+  }
+
+  // 4. Calculate prices
+  const basePrice = Number(sc.GiaVeGoc);
+  const roomSurcharge = Number(sc.PhongChieu.LoaiPhong.PhuThu);
+  const daySurcharge = Number(sc.LoaiNgay.PhuThu);
+
+  let totalAmount = 0;
+  const calculatedPrices = seats.map((s) => {
+    const seatSurcharge = Number(s.Ghe.LoaiGhe.PhuThu);
+    const price = basePrice + roomSurcharge + daySurcharge + seatSurcharge;
+    totalAmount += price;
+    return {
+      seatId: s.MaGheSuatChieu,
+      price,
+      tenGhe: `${s.Ghe.ViTriDay}${s.Ghe.ViTriCot}`,
+    };
+  });
+
+  // 5. Execute counter sales transaction
+  const result = await sellTicketsAtCounterTransaction(
+    staff.MaNhanVien,
+    body.MaSuatChieu,
+    body.DanhSachMaGheSuatChieu,
+    body.PhuongThuc,
+    body.MaGiaoDichNgoai,
+    now,
+    calculatedPrices,
+    totalAmount,
+  );
+
+  return {
+    MaPhieuDat: result.phieuDatVe.MaPhieuDat,
+    TongTien: totalAmount,
+    TrangThai: result.phieuDatVe.TrangThai,
+    NgayTao: result.phieuDatVe.NgayTao,
+    QRPayload: `QR_${result.phieuDatVe.MaPhieuDat}`,
+    MaNhanVien: result.phieuDatVe.MaNhanVien,
+    GiaoDich: {
+      MaGiaoDich: result.giaoDich.MaGiaoDich,
+      PhuongThuc: result.giaoDich.PhuongThuc,
+      SoTien: Number(result.giaoDich.SoTien),
+      TrangThai: result.giaoDich.TrangThai,
+      MaGiaoDichNgoai: result.giaoDich.MaGiaoDichNgoai,
+    },
+    DanhSachGhe: calculatedPrices.map((sp) => ({
+      MaGheSuatChieu: sp.seatId,
+      TenGhe: sp.tenGhe,
+      GiaVe: sp.price,
+    })),
   };
 };
