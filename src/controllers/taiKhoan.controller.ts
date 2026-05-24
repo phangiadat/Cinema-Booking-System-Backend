@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import * as taiKhoanService from '../services/taiKhoan.service';
 import { sendSuccess } from '../utils/response';
-import { UpdateProfileInput } from '../validators/taiKhoan.validator';
+import { UpdateProfileInput, ChangePasswordInput } from '../validators/taiKhoan.validator';
 
 /**
  * GET /api/v1/tai-khoan/thong-tin
@@ -37,6 +37,26 @@ export const capNhatThongTinTaiKhoan = async (
     const profile = await taiKhoanService.updateCurrentCustomerProfile(maTaiKhoan, input);
 
     sendSuccess(res, 'Cập nhật thông tin tài khoản thành công', profile);
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * PUT /api/v1/tai-khoan/doi-mat-khau
+ * Đổi mật khẩu tài khoản hiện tại (khách hàng)
+ */
+export const doiMatKhau = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> => {
+  try {
+    const maTaiKhoan = req.user!.maTaiKhoan;
+    const input = req.body as ChangePasswordInput;
+    await taiKhoanService.changeCurrentCustomerPassword(maTaiKhoan, input);
+
+    sendSuccess(res, 'Đổi mật khẩu thành công');
   } catch (error) {
     next(error);
   }

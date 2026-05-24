@@ -4,7 +4,7 @@ import * as taiKhoanController from '../controllers/taiKhoan.controller';
 import { authMiddleware } from '../middlewares/auth.middleware';
 import { requireRoles } from '../middlewares/role.middleware';
 import { validate } from '../middlewares/validate.middleware';
-import { updateProfileSchema } from '../validators/taiKhoan.validator';
+import { updateProfileSchema, changePasswordSchema } from '../validators/taiKhoan.validator';
 
 const router = Router();
 
@@ -31,6 +31,19 @@ router.put(
   requireRoles(Role.CUSTOMER),
   validate(updateProfileSchema),
   taiKhoanController.capNhatThongTinTaiKhoan,
+);
+
+/**
+ * @route   PUT /api/v1/tai-khoan/doi-mat-khau
+ * @desc    Đổi mật khẩu tài khoản khách hàng hiện tại
+ * @access  Private (CUSTOMER)
+ */
+router.put(
+  '/doi-mat-khau',
+  authMiddleware,
+  requireRoles(Role.CUSTOMER),
+  validate(changePasswordSchema),
+  taiKhoanController.doiMatKhau,
 );
 
 export default router;

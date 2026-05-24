@@ -226,4 +226,92 @@ describe('👤 Customer Profile Integration Tests', () => {
       });
     });
   });
+
+  describe('PUT /api/v1/tai-khoan/doi-mat-khau', () => {
+    it('1. Change password fails with wrong old password', async () => {
+      const res = await request(app)
+        .put('/api/v1/tai-khoan/doi-mat-khau')
+        .set('Authorization', `Bearer ${customerToken}`)
+        .send({
+          MatKhauCu: 'wrongpassword',
+          MatKhauMoi: 'newpassword123',
+          XacNhanMatKhauMoi: 'newpassword123',
+        });
+
+      expect(res.status).toBe(400);
+      expect(res.body.success).toBe(false);
+      expect(res.body.message).toBe('Mật khẩu cũ không chính xác');
+    });
+
+    it('2. Change password fails if confirmation does not match', async () => {
+      const res = await request(app)
+        .put('/api/v1/tai-khoan/doi-mat-khau')
+        .set('Authorization', `Bearer ${customerToken}`)
+        .send({
+          MatKhauCu: 'password123',
+          MatKhauMoi: 'newpassword123',
+          XacNhanMatKhauMoi: 'differentconfirm',
+        });
+
+      expect(res.status).toBe(422);
+      expect(res.body.success).toBe(false);
+      expect(res.body.errors.XacNhanMatKhauMoi[0]).toContain('không khớp');
+    });
+
+    it('3. Change password fails if new password is same as old password', async () => {
+      const res = await request(app)
+        .put('/api/v1/tai-khoan/doi-mat-khau')
+        .set('Authorization', `Bearer ${customerToken}`)
+        .send({
+          MatKhauCu: 'password123',
+          MatKhauMoi: 'password123',
+          XacNhanMatKhauMoi: 'password123',
+        });
+
+      expect(res.status).toBe(422);
+      expect(res.body.success).toBe(false);
+      expect(res.body.errors.MatKhauMoi[0]).toContain('phải khác mật khẩu cũ');
+    });
+
+
+    it('4. Change password succeeds with correct old password and revokes refresh tokens', async () => {
+      // Create a dummy active refresh token in the DB first
+      const dummyToken = await prisma.refreshToken.create({
+        data: {
+          MaTaiKhoan: customerAccount.MaTaiKhoan,
+          TokenHash: 'dummy_hash',
+          HetHanLuc: new Date(Date.now() + 3600000), // 1 hour
+          BiThuHoi: false,
+        },
+      });
+
+      // Change password
+      const res = await request(app)
+        .put('/api/v1/tai-khoan/doi-mat-khau')
+        .set('Authorization', `Bearer ${customerToken}`)
+        .send({
+          MatKhauCu: 'password123',
+          MatKhauMoi: 'newpassword123',
+          XacNhanMatKhauMoi: 'newpassword123',
+        });
+
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(res.body.message).toBe('Đổi mật khẩu thành công');
+
+      // Verify in DB that the dummy refresh token has been revoked
+      const updatedToken = await prisma.refreshToken.findUnique({
+        where: { MaRefreshToken: dummyToken.MaRefreshToken },
+      });
+      expect(updatedToken?.BiThuHoi).toBe(true);
+
+      // Restore password back to original so subsequent tests/runs don't break
+      const bcrypt = require('bcrypt');
+      const hashedPassword = await bcrypt.hash('password123', 4);
+      await prisma.taiKhoan.update({
+        where: { MaTaiKhoan: customerAccount.MaTaiKhoan },
+        data: { MatKhau: hashedPassword },
+      });
+    });
+  });
 });

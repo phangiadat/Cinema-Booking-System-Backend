@@ -4,9 +4,11 @@ import {
   findByEmail,
   findByPhone,
   updateProfile,
+  updatePasswordAndRevokeTokens,
 } from '../repositories/taikhoan.repository';
-import { UnauthorizedError, NotFoundError, ConflictError } from '../utils/errors';
-import { UpdateProfileInput } from '../validators/taiKhoan.validator';
+import { UnauthorizedError, NotFoundError, ConflictError, BadRequestError } from '../utils/errors';
+import { UpdateProfileInput, ChangePasswordInput } from '../validators/taiKhoan.validator';
+import { comparePassword, hashPassword } from '../utils/password';
 
 export interface CustomerProfileResponse {
   MaTaiKhoan: string;
@@ -113,4 +115,35 @@ export const updateCurrentCustomerProfile = async (
     NgayTao: updated.NgayTao,
     NgayCapNhat: updated.NgayCapNhat,
   };
+};
+
+/**
+ * Change current customer's password and revoke active refresh tokens
+ */
+export const changeCurrentCustomerPassword = async (
+  maTaiKhoan: string,
+  input: ChangePasswordInput,
+): Promise<void> => {
+  const existing = await findCustomerProfileByAccountId(maTaiKhoan);
+
+  if (!existing) {
+    throw new NotFoundError('Không tìm thấy tài khoản');
+  }
+
+  // Active account check
+  if (!existing.KhaDung || (existing.KhachHang && !existing.KhachHang.KhaDung)) {
+    throw new UnauthorizedError('Tài khoản đã bị vô hiệu hóa');
+  }
+
+  // Verify MatKhauCu using bcrypt
+  const isMatch = await comparePassword(input.MatKhauCu, existing.MatKhau);
+  if (!isMatch) {
+    throw new BadRequestError('Mật khẩu cũ không chính xác');
+  }
+
+  // Hash MatKhauMoi
+  const hashedPassword = await hashPassword(input.MatKhauMoi);
+
+  // Update in a transaction (both password and refresh tokens revocation)
+  await updatePasswordAndRevokeTokens(maTaiKhoan, hashedPassword);
 };

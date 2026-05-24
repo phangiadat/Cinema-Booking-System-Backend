@@ -137,4 +137,49 @@ export const updateProfile = async (
   });
 };
 
+/**
+ * Update TaiKhoan password
+ */
+export const updatePassword = async (
+  maTaiKhoan: string,
+  hashedPassword: string,
+) => {
+  return prisma.taiKhoan.update({
+    where: { MaTaiKhoan: maTaiKhoan },
+    data: { MatKhau: hashedPassword },
+  });
+};
+
+/**
+ * Revoke all refresh tokens for a TaiKhoan
+ */
+export const revokeRefreshTokensByAccountId = async (
+  maTaiKhoan: string,
+) => {
+  return prisma.refreshToken.updateMany({
+    where: { MaTaiKhoan: maTaiKhoan, BiThuHoi: false },
+    data: { BiThuHoi: true },
+  });
+};
+
+/**
+ * Update password and revoke refresh tokens in a single transaction
+ */
+export const updatePasswordAndRevokeTokens = async (
+  maTaiKhoan: string,
+  hashedPassword: string,
+) => {
+  return prisma.$transaction([
+    prisma.taiKhoan.update({
+      where: { MaTaiKhoan: maTaiKhoan },
+      data: { MatKhau: hashedPassword },
+    }),
+    prisma.refreshToken.updateMany({
+      where: { MaTaiKhoan: maTaiKhoan, BiThuHoi: false },
+      data: { BiThuHoi: true },
+    }),
+  ]);
+};
+
+
 
