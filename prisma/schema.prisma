@@ -36,6 +36,7 @@ enum PhuongThucThanhToan {
   VNPAY
   TIEN_MAT
   MOMO
+  CHUYEN_KHOAN
 }
 
 enum TrangThaiGiaoDich {
