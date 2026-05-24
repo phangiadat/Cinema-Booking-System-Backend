@@ -6,6 +6,7 @@ import datVeRoutes from './datve.routes';
 import lichsuRoutes from './lichsu.routes';
 import danhgiaRoutes from './danhgia.routes';
 import hoantienRoutes from './hoantien.routes';
+import taiKhoanRoutes from './taiKhoan.routes';
 import { sendSuccess } from '../utils/response';
 
 const router = Router();
@@ -31,5 +32,6 @@ router.use('/dat-ve', datVeRoutes);
 router.use('/lich-su-giao-dich', lichsuRoutes);
 router.use('/danh-gia', danhgiaRoutes);
 router.use('/hoan-tien', hoantienRoutes);
+router.use('/tai-khoan', taiKhoanRoutes);
 
 export default router;
