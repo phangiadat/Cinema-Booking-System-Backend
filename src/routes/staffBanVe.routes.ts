@@ -5,6 +5,7 @@ import { authMiddleware } from '../middlewares/auth.middleware';
 import { requireRoles } from '../middlewares/role.middleware';
 import { validate } from '../middlewares/validate.middleware';
 import { staffShowtimeQuerySchema, maSuatChieuParamSchema, staffSellTicketSchema } from '../validators/staffBanVe.validator';
+import { historyQuerySchema } from '../validators/staffSoatVe.validator';
 
 const router = Router();
 
@@ -45,6 +46,19 @@ router.post(
   requireRoles(Role.STAFF),
   validate(staffSellTicketSchema, 'body'),
   staffBanVeController.thanhToanBanVe,
+);
+
+/**
+ * @route   GET /api/v1/staff/ban-ve/lich-su
+ * @desc    Lấy lịch sử bán vé tại quầy của nhân viên
+ * @access  Private (STAFF only)
+ */
+router.get(
+  '/staff/ban-ve/lich-su',
+  authMiddleware,
+  requireRoles(Role.STAFF),
+  validate(historyQuerySchema, 'query'),
+  staffBanVeController.getLichSuBanVe,
 );
 
 export default router;

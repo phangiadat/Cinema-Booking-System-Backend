@@ -35,9 +35,76 @@ export const findTicketForValidation = async (maChiTietDat: string) => {
     return null;
   }
 
-  return prisma.chiTietDatVe.findFirst({
+  // 1. Check if 'maChiTietDat' is indeed an individual seat ticket detail (MaChiTietDat)
+  const ticketByDetailId = await prisma.chiTietDatVe.findFirst({
     where: {
       MaChiTietDat: maChiTietDat,
+      KhaDung: true,
+    },
+    include: {
+      PhieuDatVe: {
+        include: {
+          GiaoDichs: {
+            where: { KhaDung: true },
+          },
+        },
+      },
+      GheSuatChieu: {
+        include: {
+          SuatChieu: {
+            include: {
+              Phim: true,
+              PhongChieu: true,
+            },
+          },
+          Ghe: true,
+        },
+      },
+    },
+  });
+
+  if (ticketByDetailId) {
+    return ticketByDetailId;
+  }
+
+  // 2. Fall back to checking if 'maChiTietDat' is a Booking ID (MaPhieuDat)
+  // Retrieve the first unchecked seat ticket detail in this booking
+  const uncheckedTicketInBooking = await prisma.chiTietDatVe.findFirst({
+    where: {
+      MaPhieuDat: maChiTietDat,
+      DaCheckIn: false,
+      KhaDung: true,
+    },
+    include: {
+      PhieuDatVe: {
+        include: {
+          GiaoDichs: {
+            where: { KhaDung: true },
+          },
+        },
+      },
+      GheSuatChieu: {
+        include: {
+          SuatChieu: {
+            include: {
+              Phim: true,
+              PhongChieu: true,
+            },
+          },
+          Ghe: true,
+        },
+      },
+    },
+  });
+
+  if (uncheckedTicketInBooking) {
+    return uncheckedTicketInBooking;
+  }
+
+  // If no unchecked tickets, grab any ticket in this booking so validation returns "already checked-in"
+  return prisma.chiTietDatVe.findFirst({
+    where: {
+      MaPhieuDat: maChiTietDat,
       KhaDung: true,
     },
     include: {

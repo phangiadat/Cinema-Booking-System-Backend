@@ -78,7 +78,7 @@ export const validateTicket = async (
   const suatChieu = ticket.GheSuatChieu.SuatChieu;
   const showtimeStart = new Date(suatChieu.NgayChieu);
   const gioChieu = new Date(suatChieu.GioChieu);
-  showtimeStart.setHours(gioChieu.getHours(), gioChieu.getMinutes(), gioChieu.getSeconds());
+  showtimeStart.setUTCHours(gioChieu.getUTCHours(), gioChieu.getUTCMinutes(), gioChieu.getUTCSeconds(), 0);
 
   const showtimeEnd = new Date(showtimeStart.getTime() + suatChieu.Phim.ThoiLuong * 60 * 1000);
   const checkInStart = new Date(showtimeStart.getTime() - 30 * 60 * 1000);
@@ -122,20 +122,21 @@ export const checkInTicket = async (
 
   // 2. Perform full ticket validation
   const validation = await validateTicket(maTaiKhoan, { MaChiTietDat: body.MaChiTietDat });
-  if (!validation.valid) {
+  if (!validation.valid || !validation.ticketInfo) {
     throw new BadRequestError(validation.reason);
   }
 
   const now = new Date();
+  const resolvedMaChiTietDat = validation.ticketInfo.MaChiTietDat;
 
   // 3. Mark checked in
-  const success = await markSeatCheckedIn(body.MaChiTietDat, staff.MaNhanVien, now);
+  const success = await markSeatCheckedIn(resolvedMaChiTietDat, staff.MaNhanVien, now);
   if (!success) {
     throw new BadRequestError('Vé đã được sử dụng');
   }
 
   // Fetch ticket details again for the response metadata
-  const ticket = await findTicketForValidation(body.MaChiTietDat);
+  const ticket = await findTicketForValidation(resolvedMaChiTietDat);
   const suatChieu = ticket!.GheSuatChieu.SuatChieu;
 
   return {
