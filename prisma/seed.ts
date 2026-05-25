@@ -482,61 +482,102 @@ async function main() {
       console.log(`🎬 Đã tạo phim: ${phim.TenPhim}`);
     }
 
-    const sc1 = await prisma.suatChieu.create({
-      data: {
-        MaPhim: createdMovies[0].MaPhim, // Avengers: Endgame
-        MaPhong: phong2.MaPhong,
-        MaLoaiNgay: lnCuoiTuan.MaLoaiNgay,
-        NgayChieu: new Date("2026-06-01"),
-        GioChieu: new Date("2026-05-23T19:00:00Z"), // 19:00
-        GiaVeGoc: 90000.0,
+    const showtimesToSeed = [
+      {
+        movieIndex: 0, // Avengers: Endgame
+        phong: phong2,
+        loaiNgay: lnCuoiTuan,
+        ngayChieu: new Date("2026-06-01"),
+        gioChieu: new Date("1970-01-01T19:00:00Z"),
+        giaVeGoc: 90000.0,
       },
-    });
-
-    const gsc1Data = allGhesPhong2.map((g) => {
-      const phuThuPhong = 50000.0; // IMAX
-      let phuThuGhe = 0.0;
-      if (g.MaLoaiGhe === lgVIP.MaLoaiGhe) phuThuGhe = 15000.0;
-      if (g.MaLoaiGhe === lgSweetbox.MaLoaiGhe) phuThuGhe = 30000.0;
-
-      return {
-        MaSuatChieu: sc1.MaSuatChieu,
-        MaGhe: g.MaGhe,
-        TrangThai: TrangThaiGheSuatChieu.TRONG,
-        GiaVe: 90000.0 + phuThuPhong + phuThuGhe,
-      };
-    });
-    await prisma.gheSuatChieu.createMany({ data: gsc1Data });
-    console.log(`✅ Đã tạo Suất chiếu 1 & 25 Ghế suất chiếu cho phim Avengers: Endgame`);
-
-    const sc2 = await prisma.suatChieu.create({
-      data: {
-        MaPhim: createdMovies[7].MaPhim, // Inside Out 2
-        MaPhong: phong1.MaPhong,
-        MaLoaiNgay: lnThuong.MaLoaiNgay,
-        NgayChieu: new Date("2026-06-10"),
-        GioChieu: new Date("2026-05-23T14:30:00Z"), // 14:30
-        GiaVeGoc: 70000.0,
+      {
+        movieIndex: 7, // Inside Out 2
+        phong: phong1,
+        loaiNgay: lnThuong,
+        ngayChieu: new Date("2026-06-10"),
+        gioChieu: new Date("1970-01-01T14:30:00Z"),
+        giaVeGoc: 70000.0,
       },
-    });
+      {
+        movieIndex: 1, // Inception
+        phong: phong1,
+        loaiNgay: lnThuong,
+        ngayChieu: new Date("2026-06-11"),
+        gioChieu: new Date("1970-01-01T10:00:00Z"),
+        giaVeGoc: 70000.0,
+      },
+      {
+        movieIndex: 4, // Spider-Man: No Way Home
+        phong: phong2,
+        loaiNgay: lnCuoiTuan,
+        ngayChieu: new Date("2026-06-12"),
+        gioChieu: new Date("1970-01-01T15:30:00Z"),
+        giaVeGoc: 85000.0,
+      },
+      {
+        movieIndex: 3, // Joker
+        phong: phong1,
+        loaiNgay: lnThuong,
+        ngayChieu: new Date("2026-06-13"),
+        gioChieu: new Date("1970-01-01T20:00:00Z"),
+        giaVeGoc: 75000.0,
+      },
+      {
+        movieIndex: 8, // Dune: Part Two
+        phong: phong2,
+        loaiNgay: lnCuoiTuan,
+        ngayChieu: new Date("2026-06-14"),
+        gioChieu: new Date("1970-01-01T17:00:00Z"),
+        giaVeGoc: 95000.0,
+      },
+      {
+        movieIndex: 5, // Interstellar
+        phong: phong1,
+        loaiNgay: lnThuong,
+        ngayChieu: new Date("2026-06-15"),
+        gioChieu: new Date("1970-01-01T09:30:00Z"),
+        giaVeGoc: 70000.0,
+      },
+    ];
 
-    const gsc2Data = allGhesPhong1.map((g) => {
-      let phuThuGhe = 0.0;
-      if (g.MaLoaiGhe === lgVIP.MaLoaiGhe) phuThuGhe = 15000.0;
-      if (g.MaLoaiGhe === lgSweetbox.MaLoaiGhe) phuThuGhe = 30000.0;
+    const createdShowtimes = [];
+    for (const item of showtimesToSeed) {
+      const sc = await prisma.suatChieu.create({
+        data: {
+          MaPhim: createdMovies[item.movieIndex].MaPhim,
+          MaPhong: item.phong.MaPhong,
+          MaLoaiNgay: item.loaiNgay.MaLoaiNgay,
+          NgayChieu: item.ngayChieu,
+          GioChieu: item.gioChieu,
+          GiaVeGoc: item.giaVeGoc,
+        },
+      });
+      createdShowtimes.push(sc);
 
-      return {
-        MaSuatChieu: sc2.MaSuatChieu,
-        MaGhe: g.MaGhe,
-        TrangThai: TrangThaiGheSuatChieu.TRONG,
-        GiaVe: 70000.0 + phuThuGhe,
-      };
-    });
-    await prisma.gheSuatChieu.createMany({ data: gsc2Data });
-    console.log(`✅ Đã tạo Suất chiếu 2 & 25 Ghế suất chiếu cho phim Inside Out 2`);
+      // Create GheSuatChieu for all seats in this room
+      const allGhes = item.phong.MaPhong === phong1.MaPhong ? allGhesPhong1 : allGhesPhong2;
+      const lpPhuThu = Number(item.phong.MaPhong === phong1.MaPhong ? lp2D.PhuThu : lpIMAX.PhuThu);
+      
+      const gscData = allGhes.map((g) => {
+        let phuThuGhe = 0.0;
+        if (g.MaLoaiGhe === lgVIP.MaLoaiGhe) phuThuGhe = 15000.0;
+        if (g.MaLoaiGhe === lgSweetbox.MaLoaiGhe) phuThuGhe = 30000.0;
+
+        return {
+          MaSuatChieu: sc.MaSuatChieu,
+          MaGhe: g.MaGhe,
+          TrangThai: TrangThaiGheSuatChieu.TRONG,
+          GiaVe: Number(item.giaVeGoc) + lpPhuThu + phuThuGhe,
+        };
+      });
+
+      await prisma.gheSuatChieu.createMany({ data: gscData });
+      console.log(`✅ Đã tạo Suất chiếu cho phim ${createdMovies[item.movieIndex].TenPhim} & 25 Ghế suất chiếu`);
+    }
 
     const randomGsc = await prisma.gheSuatChieu.findFirst({
-      where: { MaSuatChieu: sc2.MaSuatChieu },
+      where: { MaSuatChieu: createdShowtimes[1].MaSuatChieu },
     });
 
     if (randomGsc && customerTK?.KhachHang) {
