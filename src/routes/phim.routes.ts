@@ -4,6 +4,9 @@ import { optionalAuthMiddleware } from '../middlewares/auth.middleware';
 import { validate } from '../middlewares/validate.middleware';
 import { phimQuerySchema } from '../validators/phim.validator';
 
+import * as danhGiaController from '../controllers/danhgia.controller';
+import { movieReviewParamsSchema, movieReviewQuerySchema } from '../validators/danhgia.validator';
+
 const router = Router();
 
 /**
@@ -16,6 +19,18 @@ router.get(
   optionalAuthMiddleware,
   validate(phimQuerySchema, 'query'),
   phimController.getDanhSachPhim,
+);
+
+/**
+ * @route   GET /api/v1/phim/:maPhim/danh-gia
+ * @desc    Lấy danh sách đánh giá phim
+ * @access  Public
+ */
+router.get(
+  '/:maPhim/danh-gia',
+  validate(movieReviewParamsSchema, 'params'),
+  validate(movieReviewQuerySchema, 'query'),
+  danhGiaController.getDanhSachDanhGia,
 );
 
 /**

@@ -1,5 +1,7 @@
 import { Router } from 'express';
 import * as controller from '../controllers/suatchieu.controller';
+import { validate } from '../middlewares/validate.middleware';
+import { showtimeIdParamSchema } from '../validators/datve.validator';
 
 const router = Router();
 
@@ -19,9 +21,13 @@ router.get('/:maSuatChieu', controller.getChiTietSuatChieu);
 
 /**
  * @route   GET /api/v1/suat-chieu/:maSuatChieu/ghe
- * @desc    Lấy danh sách ghế của suất chiếu (sơ đồ ghế thực tế của suất chiếu để chọn)
+ * @desc    Lấy sơ đồ ghế và trạng thái giữ ghế của suất chiếu
  * @access  Public
  */
-router.get('/:maSuatChieu/ghe', controller.getDanhSachGheSuatChieu);
+router.get(
+  '/:maSuatChieu/ghe',
+  validate(showtimeIdParamSchema, 'params'),
+  controller.getSeatMap,
+);
 
 export default router;

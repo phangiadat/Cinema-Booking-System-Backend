@@ -36,6 +36,7 @@ enum PhuongThucThanhToan {
   VNPAY
   TIEN_MAT
   MOMO
+  CHUYEN_KHOAN
 }
 
 enum TrangThaiGiaoDich {
@@ -77,9 +78,10 @@ model TaiKhoan {
   NgayCapNhat DateTime? @updatedAt
 
   // Relations
-  KhachHang     KhachHang?
-  NhanVien      NhanVien?
-  RefreshTokens RefreshToken[]
+  KhachHang         KhachHang?
+  NhanVien          NhanVien?
+  RefreshTokens     RefreshToken[]
+  GheSuatChieusHeld GheSuatChieu[]
 
   @@map("tai_khoan")
 }
@@ -109,9 +111,10 @@ model NhanVien {
   NgayCapNhat DateTime? @updatedAt
 
   // Relations
-  TaiKhoan          TaiKhoan           @relation(fields: [MaTaiKhoan], references: [MaTaiKhoan])
-  ChiTietCaLamViecs ChiTietCaLamViec[]
-  PhieuDatVes       PhieuDatVe[]
+  TaiKhoan               TaiKhoan           @relation(fields: [MaTaiKhoan], references: [MaTaiKhoan])
+  ChiTietCaLamViecs      ChiTietCaLamViec[]
+  PhieuDatVes            PhieuDatVe[]
+  ChiTietDatVesCheckIn   ChiTietDatVe[]     @relation("NhanVienCheckInVe")
 
   @@index([MaTaiKhoan])
   @@map("nhan_vien")
@@ -122,6 +125,7 @@ model CaLamViec {
   TenCa       String    @db.VarChar(100)
   GioBatDau   DateTime  @db.Time(0)
   GioKetThuc  DateTime  @db.Time(0)
+  SoNguoiToiDa Int       @default(1)
   KhaDung     Boolean   @default(true)
   NgayTao     DateTime  @default(now())
   NgayCapNhat DateTime? @updatedAt
@@ -301,6 +305,8 @@ model GheSuatChieu {
   MaGhe          String                @db.VarChar(36)
   TrangThai      TrangThaiGheSuatChieu
   GiaVe          Decimal               @db.Decimal(10, 2)
+  ThoiGianGiuGhe DateTime?
+  MaTaiKhoanGiu  String?               @db.VarChar(36)
   KhaDung        Boolean               @default(true)
   NgayTao        DateTime              @default(now())
   NgayCapNhat    DateTime?             @updatedAt
@@ -308,6 +314,7 @@ model GheSuatChieu {
   // Relations
   SuatChieu     SuatChieu      @relation(fields: [MaSuatChieu], references: [MaSuatChieu])
   Ghe           Ghe            @relation(fields: [MaGhe], references: [MaGhe])
+  TaiKhoanGiu   TaiKhoan?      @relation(fields: [MaTaiKhoanGiu], references: [MaTaiKhoan])
   ChiTietDatVes ChiTietDatVe[]
 
   @@index([MaSuatChieu])
@@ -341,16 +348,21 @@ model ChiTietDatVe {
   MaPhieuDat     String    @db.VarChar(36)
   MaGheSuatChieu String    @db.VarChar(36)
   GiaVe          Decimal   @db.Decimal(10, 2)
-  KhaDung        Boolean   @default(true)
-  NgayTao        DateTime  @default(now())
-  NgayCapNhat    DateTime? @updatedAt
+  KhaDung            Boolean   @default(true)
+  NgayTao            DateTime  @default(now())
+  NgayCapNhat        DateTime? @updatedAt
+  DaCheckIn          Boolean   @default(false)
+  ThoiGianCheckIn    DateTime?
+  MaNhanVienCheckIn  String?   @db.VarChar(36)
 
   // Relations
-  PhieuDatVe   PhieuDatVe   @relation(fields: [MaPhieuDat], references: [MaPhieuDat])
-  GheSuatChieu GheSuatChieu @relation(fields: [MaGheSuatChieu], references: [MaGheSuatChieu])
+  PhieuDatVe      PhieuDatVe   @relation(fields: [MaPhieuDat], references: [MaPhieuDat])
+  GheSuatChieu    GheSuatChieu @relation(fields: [MaGheSuatChieu], references: [MaGheSuatChieu])
+  NhanVienCheckIn NhanVien?    @relation("NhanVienCheckInVe", fields: [MaNhanVienCheckIn], references: [MaNhanVien])
 
   @@index([MaPhieuDat])
   @@index([MaGheSuatChieu])
+  @@index([MaNhanVienCheckIn])
   @@map("chi_tiet_dat_ve")
 }
 

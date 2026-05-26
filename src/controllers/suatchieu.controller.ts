@@ -54,3 +54,13 @@ export const getDanhSachGheSuatChieu = asyncHandler(async (req: Request, res: Re
   const result = await suatChieuService.getSeatsOfShowtimeService(maSuatChieu);
   return sendSuccess(res, 'Lấy danh sách ghế của suất chiếu thành công', result);
 });
+
+/**
+ * GET /api/v1/suat-chieu/:maSuatChieu/ghe
+ */
+export const getSeatMap = asyncHandler(async (req: Request, res: Response) => {
+  const { maSuatChieu } = req.params as { maSuatChieu: string };
+  const seatMap = await suatChieuService.getSeatMap(maSuatChieu);
+
+  return sendSuccess(res, 'Lấy sơ đồ ghế thành công', seatMap);
+});

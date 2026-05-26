@@ -85,3 +85,101 @@ export const updateTaiKhoan = async (
     data,
   });
 };
+
+/**
+ * Find a TaiKhoan by MaTaiKhoan (alias of findTaiKhoanById)
+ */
+export const findById = findTaiKhoanById;
+
+/**
+ * Find a TaiKhoan with its associated KhachHang profile
+ */
+export const findCustomerProfileByAccountId = async (
+  maTaiKhoan: string,
+) => {
+  return prisma.taiKhoan.findUnique({
+    where: { MaTaiKhoan: maTaiKhoan },
+    include: {
+      KhachHang: true,
+    },
+  });
+};
+
+/**
+ * Find a TaiKhoan by Email (alias of findTaiKhoanByEmail)
+ */
+export const findByEmail = findTaiKhoanByEmail;
+
+/**
+ * Find a TaiKhoan by SoDienThoai
+ */
+export const findByPhone = async (
+  soDienThoai: string,
+): Promise<TaiKhoan | null> => {
+  return prisma.taiKhoan.findUnique({
+    where: { SoDienThoai: soDienThoai },
+  });
+};
+
+/**
+ * Update a TaiKhoan profile and include associated KhachHang profile
+ */
+export const updateProfile = async (
+  maTaiKhoan: string,
+  data: Prisma.TaiKhoanUpdateInput,
+) => {
+  return prisma.taiKhoan.update({
+    where: { MaTaiKhoan: maTaiKhoan },
+    data,
+    include: {
+      KhachHang: true,
+    },
+  });
+};
+
+/**
+ * Update TaiKhoan password
+ */
+export const updatePassword = async (
+  maTaiKhoan: string,
+  hashedPassword: string,
+) => {
+  return prisma.taiKhoan.update({
+    where: { MaTaiKhoan: maTaiKhoan },
+    data: { MatKhau: hashedPassword },
+  });
+};
+
+/**
+ * Revoke all refresh tokens for a TaiKhoan
+ */
+export const revokeRefreshTokensByAccountId = async (
+  maTaiKhoan: string,
+) => {
+  return prisma.refreshToken.updateMany({
+    where: { MaTaiKhoan: maTaiKhoan, BiThuHoi: false },
+    data: { BiThuHoi: true },
+  });
+};
+
+/**
+ * Update password and revoke refresh tokens in a single transaction
+ */
+export const updatePasswordAndRevokeTokens = async (
+  maTaiKhoan: string,
+  hashedPassword: string,
+) => {
+  return prisma.$transaction([
+    prisma.taiKhoan.update({
+      where: { MaTaiKhoan: maTaiKhoan },
+      data: { MatKhau: hashedPassword },
+    }),
+    prisma.refreshToken.updateMany({
+      where: { MaTaiKhoan: maTaiKhoan, BiThuHoi: false },
+      data: { BiThuHoi: true },
+    }),
+  ]);
+};
+
+
+
