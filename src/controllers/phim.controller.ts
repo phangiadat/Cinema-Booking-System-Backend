@@ -39,6 +39,21 @@ export const getChiTietPhim = asyncHandler(async (req: Request, res: Response) =
 });
 
 // ========================
+// GET /api/v1/phim/:maPhim/suat-chieu
+// ========================
+export const getSuatChieuCuaPhim = asyncHandler(async (req: Request, res: Response) => {
+  const { maPhim } = req.params as { maPhim: string };
+
+  const suatChieus = await phimService.getSuatChieuCuaPhim(maPhim);
+
+  return sendSuccess(
+    res,
+    'Lấy danh sách suất chiếu của phim thành công',
+    suatChieus,
+  );
+});
+
+// ========================
 // POST /api/v1/phim
 // ========================
 export const taoPhim = asyncHandler(async (req: Request, res: Response) => {

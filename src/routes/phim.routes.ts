@@ -7,6 +7,7 @@ import {
   createPhimSchema,
   updatePhimSchema,
   phimQuerySchema,
+  phimParamSchema,
 } from '../validators/phim.validator';
 import { Role } from '@prisma/client';
 
@@ -37,6 +38,18 @@ router.get(
   validate(movieReviewParamsSchema, 'params'),
   validate(movieReviewQuerySchema, 'query'),
   danhGiaController.getDanhSachDanhGia,
+);
+
+/**
+ * @route   GET /api/v1/phim/:maPhim/suat-chieu
+ * @desc    Lấy danh sách suất chiếu của phim
+ * @access  Public
+ */
+router.get(
+  '/:maPhim/suat-chieu',
+  optionalAuthMiddleware,
+  validate(phimParamSchema, 'params'),
+  phimController.getSuatChieuCuaPhim,
 );
 
 /**

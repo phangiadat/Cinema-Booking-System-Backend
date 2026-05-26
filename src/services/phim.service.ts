@@ -9,6 +9,8 @@ import {
   softDelete,
   restore,
   countRelatedTicketDetailsByMovieId,
+  findActiveById,
+  findPublicShowtimesByMovieId,
 } from '../repositories/phim.repository';
 import {
   CreatePhimInput,
@@ -80,6 +82,48 @@ export const getChiTietPhim = async (
   }
 
   return phim;
+};
+
+// ========================
+// Service: Get public showtimes by movie ID
+// ========================
+export const getSuatChieuCuaPhim = async (maPhim: string) => {
+  const phim = await findActiveById(maPhim);
+  if (!phim) {
+    throw new NotFoundError(`Không tìm thấy phim với mã: ${maPhim}`);
+  }
+
+  const now = new Date();
+  const suatChieus = await findPublicShowtimesByMovieId(maPhim);
+
+  return suatChieus
+    .filter((suatChieu) => {
+      const showtimeStart = new Date(suatChieu.NgayChieu);
+      const gioChieu = new Date(suatChieu.GioChieu);
+      showtimeStart.setHours(
+        gioChieu.getHours(),
+        gioChieu.getMinutes(),
+        gioChieu.getSeconds(),
+        gioChieu.getMilliseconds(),
+      );
+
+      return showtimeStart >= now;
+    })
+    .map((suatChieu) => ({
+      ...suatChieu,
+      GiaVeGoc: Number(suatChieu.GiaVeGoc),
+      PhongChieu: {
+        ...suatChieu.PhongChieu,
+        LoaiPhong: {
+          ...suatChieu.PhongChieu.LoaiPhong,
+          PhuThu: Number(suatChieu.PhongChieu.LoaiPhong.PhuThu),
+        },
+      },
+      LoaiNgay: {
+        ...suatChieu.LoaiNgay,
+        PhuThu: Number(suatChieu.LoaiNgay.PhuThu),
+      },
+    }));
 };
 
 // ========================
