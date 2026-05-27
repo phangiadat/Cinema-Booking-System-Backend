@@ -13,6 +13,12 @@ export const createCaLamViecSchema = z.object({
   GioKetThuc: z
     .string({ required_error: 'Giờ kết thúc là bắt buộc' })
     .regex(timeRegex, 'Giờ kết thúc phải ở định dạng HH:mm:ss (ví dụ: 12:00:00)'),
+  SoNguoiToiDa: z
+    .coerce
+    .number()
+    .int()
+    .min(1, 'Số người tối đa tối thiểu là 1')
+    .optional(),
 });
 
 export const updateCaLamViecSchema = createCaLamViecSchema.partial();

@@ -30,6 +30,7 @@ export const createCaLamViec = async (input: CreateCaLamViecInput): Promise<CaLa
       TenCa: input.TenCa,
       GioBatDau: gioBatDau,
       GioKetThuc: gioKetThuc,
+      SoNguoiToiDa: input.SoNguoiToiDa,
       KhaDung: true,
     },
   });
@@ -91,6 +92,7 @@ export const updateCaLamViec = async (
       TenCa: input.TenCa,
       GioBatDau: gioBatDau,
       GioKetThuc: gioKetThuc,
+      SoNguoiToiDa: input.SoNguoiToiDa,
     },
   });
 };
@@ -238,3 +240,54 @@ export const huyPhanCa = async (maChiTietCa: string): Promise<void> => {
     where: { MaChiTietCa: maChiTietCa },
   });
 };
+
+export const togglePhanCaStatus = async (maChiTietCa: string): Promise<ChiTietCaLamViec> => {
+  const assigned = await prisma.chiTietCaLamViec.findUnique({
+    where: { MaChiTietCa: maChiTietCa },
+  });
+
+  if (!assigned) {
+    throw new NotFoundError('Không tìm thấy lịch phân ca');
+  }
+
+  const newKhaDung = !assigned.KhaDung;
+
+  if (newKhaDung) {
+    const shift = await prisma.caLamViec.findUnique({
+      where: { MaCa: assigned.MaCa },
+    });
+    if (!shift) {
+      throw new NotFoundError('Ca làm việc không tồn tại');
+    }
+    const count = await prisma.chiTietCaLamViec.count({
+      where: {
+        MaCa: assigned.MaCa,
+        NgayLamViec: assigned.NgayLamViec,
+        KhaDung: true,
+      },
+    });
+    if (count >= shift.SoNguoiToiDa) {
+      throw new BadRequestError('Ca làm việc trong ngày đã đủ số lượng nhân sự tối đa!');
+    }
+  }
+
+  return prisma.chiTietCaLamViec.update({
+    where: { MaChiTietCa: maChiTietCa },
+    data: { KhaDung: newKhaDung },
+    include: {
+      CaLamViec: true,
+      NhanVien: {
+        include: {
+          TaiKhoan: {
+            select: {
+              HoTen: true,
+              Email: true,
+              SoDienThoai: true,
+            },
+          },
+        },
+      },
+    },
+  });
+};
+

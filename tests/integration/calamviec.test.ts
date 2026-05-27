@@ -262,5 +262,32 @@ describe('📅 Quản Lý Ca Làm Việc & Lịch Trực Integration Tests', () 
       });
       expect(dbAssigned).toBeNull();
     });
+
+    it('should toggle shift assignment status successfully', async () => {
+      const assigned = await prisma.chiTietCaLamViec.create({
+        data: {
+          MaCa: testCa.MaCa,
+          MaNhanVien: maNhanVien,
+          NgayLamViec: new Date('2026-06-05'),
+          KhaDung: true,
+        },
+      });
+
+      // 1. Toggle to false
+      const res1 = await request(app)
+        .patch(`/api/v1/admin/ca-lam-viec/phan-ca/${assigned.MaChiTietCa}/toggle`)
+        .set('Authorization', `Bearer ${adminToken}`);
+
+      expect(res1.status).toBe(200);
+      expect(res1.body.data.KhaDung).toBe(false);
+
+      // 2. Toggle to true
+      const res2 = await request(app)
+        .patch(`/api/v1/admin/ca-lam-viec/phan-ca/${assigned.MaChiTietCa}/toggle`)
+        .set('Authorization', `Bearer ${adminToken}`);
+
+      expect(res2.status).toBe(200);
+      expect(res2.body.data.KhaDung).toBe(true);
+    });
   });
 });

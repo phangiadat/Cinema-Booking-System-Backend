@@ -69,3 +69,10 @@ export const huyPhanCa = asyncHandler(async (req: Request, res: Response) => {
 
   return sendSuccess(res, 'Hủy phân công ca trực thành công');
 });
+
+export const togglePhanCaStatus = asyncHandler(async (req: Request, res: Response) => {
+  const { maChiTietCa } = req.params as { maChiTietCa: string };
+  const result = await caService.togglePhanCaStatus(maChiTietCa);
+
+  return sendSuccess(res, 'Cập nhật trạng thái phân ca thành công', result);
+});

@@ -82,4 +82,11 @@ router.get(
  */
 router.delete('/phan-ca/:maChiTietCa', controller.huyPhanCa);
 
+/**
+ * @route   PATCH /api/v1/admin/ca-lam-viec/phan-ca/:maChiTietCa/toggle
+ * @desc    Bật/tắt trạng thái phân lịch trực
+ * @access  Private - ADMIN only
+ */
+router.patch('/phan-ca/:maChiTietCa/toggle', controller.togglePhanCaStatus);
+
 export default router;
