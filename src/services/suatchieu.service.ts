@@ -442,7 +442,7 @@ export const getSeatMap = async (maSuatChieu: string) => {
       MaSoDoGhe: sc.PhongChieu.SoDoGhe.MaSoDo,
       TongHang: sc.PhongChieu.SoDoGhe.SoHang,
       TongCot: sc.PhongChieu.SoDoGhe.SoCot,
-      CauTruc: null,
+      CauTruc: sc.PhongChieu.SoDoGhe.CauTruc,
     },
     Ghe: ghes,
   };
