@@ -2,7 +2,13 @@ import { Router } from 'express';
 import * as phimController from '../controllers/phim.controller';
 import { optionalAuthMiddleware } from '../middlewares/auth.middleware';
 import { validate } from '../middlewares/validate.middleware';
-import { phimQuerySchema } from '../validators/phim.validator';
+import {
+  createPhimSchema,
+  updatePhimSchema,
+  phimQuerySchema,
+  phimParamSchema,
+} from '../validators/phim.validator';
+import { Role } from '@prisma/client';
 
 import * as danhGiaController from '../controllers/danhgia.controller';
 import { movieReviewParamsSchema, movieReviewQuerySchema } from '../validators/danhgia.validator';
@@ -31,6 +37,18 @@ router.get(
   validate(movieReviewParamsSchema, 'params'),
   validate(movieReviewQuerySchema, 'query'),
   danhGiaController.getDanhSachDanhGia,
+);
+
+/**
+ * @route   GET /api/v1/phim/:maPhim/suat-chieu
+ * @desc    Lấy danh sách suất chiếu của phim
+ * @access  Public
+ */
+router.get(
+  '/:maPhim/suat-chieu',
+  optionalAuthMiddleware,
+  validate(phimParamSchema, 'params'),
+  phimController.getSuatChieuCuaPhim,
 );
 
 /**
