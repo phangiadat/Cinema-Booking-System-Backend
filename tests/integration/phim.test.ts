@@ -369,5 +369,113 @@ describe('🎬 Phim Integration Tests', () => {
       expect(res.body.success).toBe(false);
       expect(res.body.message).toBe('Phim không thể xóa');
     });
+
+    it('should block deletion of movie if any showtime exists', async () => {
+      const movie = await createTestMovie({ TenPhim: 'Movie With Showtime' });
+      
+      const loaiNgay = await prisma.loaiNgay.create({
+        data: { TenLoaiNgay: 'Weekday Test P', PhuThu: 0 },
+      });
+      const soDo = await prisma.soDoGhe.create({
+        data: { TenSoDo: 'Test Sơ đồ P', SoHang: 5, SoCot: 5 },
+      });
+      const loaiPhong = await prisma.loaiPhong.create({
+        data: { TenLoaiPhong: 'Test Phòng P', PhuThu: 0 },
+      });
+      const phongChieu = await prisma.phongChieu.create({
+        data: { TenPhong: 'Phòng P', MaLoaiPhong: loaiPhong.MaLoaiPhong, MaSoDo: soDo.MaSoDo },
+      });
+
+      await prisma.suatChieu.create({
+        data: {
+          MaPhim: movie.MaPhim,
+          MaPhong: phongChieu.MaPhong,
+          MaLoaiNgay: loaiNgay.MaLoaiNgay,
+          NgayChieu: new Date('2026-06-15'),
+          GioChieu: new Date('2026-06-15T18:00:00Z'),
+          GiaVeGoc: 50000,
+        },
+      });
+
+      const res = await request(app)
+        .delete(`/api/v1/admin/phim/${movie.MaPhim}`)
+        .set('Authorization', `Bearer ${adminToken}`);
+
+      expect(res.status).toBe(400);
+      expect(res.body.message).toBe('Phim không thể xóa');
+    });
+
+    it('should block updating KhaDung of movie if any future showtime exists', async () => {
+      const movie = await createTestMovie({ TenPhim: 'Movie Future Showtime', KhaDung: true });
+      
+      const loaiNgay = await prisma.loaiNgay.create({
+        data: { TenLoaiNgay: 'Weekday Test F', PhuThu: 0 },
+      });
+      const soDo = await prisma.soDoGhe.create({
+        data: { TenSoDo: 'Test Sơ đồ F', SoHang: 5, SoCot: 5 },
+      });
+      const loaiPhong = await prisma.loaiPhong.create({
+        data: { TenLoaiPhong: 'Test Phòng F', PhuThu: 0 },
+      });
+      const phongChieu = await prisma.phongChieu.create({
+        data: { TenPhong: 'Phòng F', MaLoaiPhong: loaiPhong.MaLoaiPhong, MaSoDo: soDo.MaSoDo },
+      });
+
+      await prisma.suatChieu.create({
+        data: {
+          MaPhim: movie.MaPhim,
+          MaPhong: phongChieu.MaPhong,
+          MaLoaiNgay: loaiNgay.MaLoaiNgay,
+          NgayChieu: new Date('2026-06-15'),
+          GioChieu: new Date('2026-06-15T18:00:00Z'),
+          GiaVeGoc: 50000,
+        },
+      });
+
+      const res = await request(app)
+        .put(`/api/v1/admin/phim/${movie.MaPhim}`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ KhaDung: false });
+
+      expect(res.status).toBe(400);
+      expect(res.body.message).toContain('Không thể cập nhật trạng thái khả dụng');
+    });
+
+    it('should allow updating KhaDung of movie if only past showtimes exist', async () => {
+      const movie = await createTestMovie({ TenPhim: 'Movie Past Showtime', KhaDung: true });
+      
+      const loaiNgay = await prisma.loaiNgay.create({
+        data: { TenLoaiNgay: 'Weekday Test Past', PhuThu: 0 },
+      });
+      const soDo = await prisma.soDoGhe.create({
+        data: { TenSoDo: 'Test Sơ đồ Past', SoHang: 5, SoCot: 5 },
+      });
+      const loaiPhong = await prisma.loaiPhong.create({
+        data: { TenLoaiPhong: 'Test Phòng Past', PhuThu: 0 },
+      });
+      const phongChieu = await prisma.phongChieu.create({
+        data: { TenPhong: 'Phòng Past', MaLoaiPhong: loaiPhong.MaLoaiPhong, MaSoDo: soDo.MaSoDo },
+      });
+
+      await prisma.suatChieu.create({
+        data: {
+          MaPhim: movie.MaPhim,
+          MaPhong: phongChieu.MaPhong,
+          MaLoaiNgay: loaiNgay.MaLoaiNgay,
+          NgayChieu: new Date('2020-01-01'),
+          GioChieu: new Date('2020-01-01T12:00:00Z'),
+          GiaVeGoc: 50000,
+        },
+      });
+
+      const res = await request(app)
+        .put(`/api/v1/admin/phim/${movie.MaPhim}`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ KhaDung: false });
+
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(res.body.data.KhaDung).toBe(false);
+    });
   });
 });
