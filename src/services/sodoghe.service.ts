@@ -1,4 +1,5 @@
 import { SoDoGhe } from '@prisma/client';
+import prisma from '../config/prisma';
 import {
   findSoDoGhes,
   findSoDoGheById,
@@ -41,6 +42,19 @@ export const capNhatSoDoGhe = async (
   input: UpdateSoDoGheInput,
 ): Promise<SoDoGhe> => {
   const sodoghe = await assertSoDoGheExists(maSoDo);
+
+  // If template is being modified, verify that rooms using this template do not have active showtimes with sold tickets
+  const activeTicketCount = await prisma.gheSuatChieu.count({
+    where: {
+      SuatChieu: {
+        PhongChieu: { MaSoDo: maSoDo }
+      },
+      TrangThai: { in: ['DA_DAT', 'DANG_GIU'] }
+    }
+  });
+  if (activeTicketCount > 0) {
+    throw new BadRequestError('Không thể cập nhật sơ đồ ghế mẫu đang được sử dụng bởi phòng chiếu có suất chiếu đã bán vé hoặc đang giữ ghế.');
+  }
 
   // If size is changing, verify it is not in use
   const isSizeChanging =

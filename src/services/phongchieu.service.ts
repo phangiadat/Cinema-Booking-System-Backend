@@ -36,6 +36,32 @@ export const getRowLetter = (index: number): string => {
   return letter;
 };
 
+export const checkIsAisle = (rIndex: number, cIndex: number, CauTruc: string | null): boolean => {
+  if (!CauTruc) return false;
+  try {
+    const struct = typeof CauTruc === 'string' ? JSON.parse(CauTruc) : CauTruc;
+    if (!struct || !struct.aisles) return false;
+
+    if (struct.aisles.cols && struct.aisles.cols.includes(cIndex + 1)) {
+      return true;
+    }
+    if (struct.aisles.rows && struct.aisles.rows.includes(rIndex + 1)) {
+      return true;
+    }
+    if (struct.aisles.custom) {
+      const customRow = struct.aisles.custom.find((item: any) => item.row === rIndex);
+      if (customRow) {
+        if (customRow.cols.includes(cIndex) || customRow.cols.includes(cIndex + 1)) {
+          return true;
+        }
+      }
+    }
+  } catch (e) {
+    // Ignore
+  }
+  return false;
+};
+
 // ==========================================
 // Helper: Assert screening room exists
 // ==========================================
@@ -105,6 +131,9 @@ export const taoPhongChieu = async (input: CreatePhongChieuInput): Promise<Phong
     for (let r = 1; r <= soDo.SoHang; r++) {
       const rowLetter = getRowLetter(r);
       for (let c = 1; c <= soDo.SoCot; c++) {
+        if (checkIsAisle(r - 1, c - 1, soDo.CauTruc)) {
+          continue;
+        }
         seatsToCreate.push({
           ViTriDay: rowLetter,
           ViTriCot: c,
@@ -138,6 +167,25 @@ export const capNhatPhongChieu = async (
     const duplicate = await findDuplicateRoomName(input.TenPhong, maPhong);
     if (duplicate) {
       throw new BadRequestError(`Tên phòng chiếu "${input.TenPhong}" đã tồn tại`);
+    }
+  }
+
+  // Check if updating room type or seat map template affects active showtimes
+  const affectsRoomDetails =
+    (input.MaLoaiPhong && input.MaLoaiPhong !== existing.MaLoaiPhong) ||
+    (input.MaSoDo && input.MaSoDo !== existing.MaSoDo);
+
+  if (affectsRoomDetails) {
+    const activeTicketCount = await prisma.gheSuatChieu.count({
+      where: {
+        SuatChieu: { MaPhong: maPhong },
+        TrangThai: { in: ['DA_DAT', 'DANG_GIU'] },
+      },
+    });
+    if (activeTicketCount > 0) {
+      throw new BadRequestError(
+        'Không thể cập nhật thông tin phòng chiếu (sơ đồ ghế, loại phòng) khi suất chiếu của phòng này đã được bán vé hoặc đang giữ ghế.',
+      );
     }
   }
 
@@ -190,6 +238,9 @@ export const capNhatPhongChieu = async (
       for (let r = 1; r <= newSoDo.SoHang; r++) {
         const rowLetter = getRowLetter(r);
         for (let c = 1; c <= newSoDo.SoCot; c++) {
+          if (checkIsAisle(r - 1, c - 1, newSoDo.CauTruc)) {
+            continue;
+          }
           seatsToCreate.push({
             ViTriDay: rowLetter,
             ViTriCot: c,
@@ -274,6 +325,18 @@ export const getDanhSachGhe = async (maPhong: string): Promise<Ghe[]> => {
 // ==========================================
 export const capNhatCauHinhGhe = async (maPhong: string, input: UpdateGhesInput): Promise<void> => {
   await assertPhongChieuExists(maPhong);
+
+  const activeTicketCount = await prisma.gheSuatChieu.count({
+    where: {
+      SuatChieu: { MaPhong: maPhong },
+      TrangThai: { in: ['DA_DAT', 'DANG_GIU'] },
+    },
+  });
+  if (activeTicketCount > 0) {
+    throw new BadRequestError(
+      'Không thể cập nhật cấu hình ghế của phòng chiếu khi suất chiếu của phòng này đã được bán vé hoặc đang giữ ghế.',
+    );
+  }
 
   // Update in a transaction
   await prisma.$transaction(async (tx) => {

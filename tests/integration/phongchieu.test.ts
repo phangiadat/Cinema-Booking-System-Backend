@@ -246,6 +246,54 @@ describe('🚪 Phòng Chiếu & Cấu hình Ghế Integration Tests', () => {
       expect(res.body.message).toContain('Không thể thay đổi sơ đồ ghế');
     });
 
+    it('should fail to update room details (MaLoaiPhong or MaSoDo) if a showtime has sold or held tickets', async () => {
+      const room = await prisma.phongChieu.create({
+        data: { TenPhong: 'Phòng Bán Vé Update', MaLoaiPhong: defaultLoaiPhongId, MaSoDo: defaultSoDoId },
+      });
+
+      const movie = await createTestMovie();
+      const loaiNgay = await prisma.loaiNgay.create({
+        data: { TenLoaiNgay: 'Weekday Test', PhuThu: 0 },
+      });
+
+      const ghe = await prisma.ghe.create({
+        data: { ViTriDay: 'A', ViTriCot: 1, MaPhong: room.MaPhong, MaLoaiGhe: defaultLoaiGheId },
+      });
+
+      const suatChieu = await prisma.suatChieu.create({
+        data: {
+          MaPhim: movie.MaPhim,
+          MaPhong: room.MaPhong,
+          MaLoaiNgay: loaiNgay.MaLoaiNgay,
+          NgayChieu: new Date('2026-06-10'),
+          GioChieu: new Date('2026-06-10T14:00:00Z'),
+          GiaVeGoc: 50000,
+        },
+      });
+
+      // Held seat (status: DANG_GIU)
+      await prisma.gheSuatChieu.create({
+        data: {
+          MaSuatChieu: suatChieu.MaSuatChieu,
+          MaGhe: ghe.MaGhe,
+          TrangThai: TrangThaiGheSuatChieu.DANG_GIU,
+          GiaVe: 50000,
+        },
+      });
+
+      const newLoaiPhong = await prisma.loaiPhong.create({
+        data: { TenLoaiPhong: 'IMAX Test', PhuThu: 50000 },
+      });
+
+      const res = await request(app)
+        .put(`/api/v1/admin/phong-chieu/${room.MaPhong}`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ MaLoaiPhong: newLoaiPhong.MaLoaiPhong });
+
+      expect(res.status).toBe(400);
+      expect(res.body.message).toContain('Không thể cập nhật thông tin phòng chiếu');
+    });
+
     it('should successfully cascade delete room (delete seats and showtimes) if no tickets are sold', async () => {
       const room = await prisma.phongChieu.create({
         data: { TenPhong: 'Phòng Xóa', MaLoaiPhong: defaultLoaiPhongId, MaSoDo: defaultSoDoId },
@@ -406,6 +454,56 @@ describe('🚪 Phòng Chiếu & Cấu hình Ghế Integration Tests', () => {
 
       expect(dbSeat2?.MaLoaiGhe).toBe(defaultLoaiGheId);
       expect(dbSeat2?.KhaDung).toBe(false);
+    });
+
+    it('should fail to bulk update seat configurations if a showtime has sold or held tickets', async () => {
+      const room = await prisma.phongChieu.create({
+        data: { TenPhong: 'Phòng Ghế Bán Vé', MaLoaiPhong: defaultLoaiPhongId, MaSoDo: defaultSoDoId },
+      });
+
+      const seat1 = await prisma.ghe.create({
+        data: { ViTriDay: 'A', ViTriCot: 1, MaPhong: room.MaPhong, MaLoaiGhe: defaultLoaiGheId, KhaDung: true },
+      });
+
+      const movie = await createTestMovie();
+      const loaiNgay = await prisma.loaiNgay.create({
+        data: { TenLoaiNgay: 'Weekday Test 2', PhuThu: 0 },
+      });
+
+      const suatChieu = await prisma.suatChieu.create({
+        data: {
+          MaPhim: movie.MaPhim,
+          MaPhong: room.MaPhong,
+          MaLoaiNgay: loaiNgay.MaLoaiNgay,
+          NgayChieu: new Date('2026-06-10'),
+          GioChieu: new Date('2026-06-10T14:00:00Z'),
+          GiaVeGoc: 50000,
+        },
+      });
+
+      // Sold seat (status: DA_DAT)
+      await prisma.gheSuatChieu.create({
+        data: {
+          MaSuatChieu: suatChieu.MaSuatChieu,
+          MaGhe: seat1.MaGhe,
+          TrangThai: TrangThaiGheSuatChieu.DA_DAT,
+          GiaVe: 50000,
+        },
+      });
+
+      const updateData = {
+        ghes: [
+          { maGhe: seat1.MaGhe, maLoaiGhe: defaultLoaiGheId, khaDung: false },
+        ],
+      };
+
+      const res = await request(app)
+        .put(`/api/v1/admin/phong-chieu/${room.MaPhong}/ghe`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send(updateData);
+
+      expect(res.status).toBe(400);
+      expect(res.body.message).toContain('Không thể cập nhật cấu hình ghế');
     });
   });
 });
