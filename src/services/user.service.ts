@@ -121,8 +121,8 @@ export const taoNguoiDung = async (input: CreateUserInput): Promise<SanitizedUse
         ...(input.VaiTro === Role.CUSTOMER && {
           KhachHang: { create: { KhaDung: true } },
         }),
-        ...(input.VaiTro === Role.STAFF && {
-          NhanVien: { create: { ChucVu: input.ChucVu || 'Nhân viên', KhaDung: true } },
+        ...((input.VaiTro === Role.STAFF || input.VaiTro === Role.ADMIN) && {
+          NhanVien: { create: { ChucVu: input.ChucVu || (input.VaiTro === Role.ADMIN ? 'Quản trị hệ thống' : 'Nhân viên'), KhaDung: true } },
         }),
       },
       include: {
@@ -177,8 +177,8 @@ export const capNhatNguoiDung = async (
       },
     });
 
-    // Update staff profile if role is STAFF and ChucVu is provided
-    if (updated.VaiTro === Role.STAFF && input.ChucVu) {
+    // Update staff profile if role is STAFF/ADMIN and ChucVu is provided
+    if ((updated.VaiTro === Role.STAFF || updated.VaiTro === Role.ADMIN) && input.ChucVu) {
       if (updated.NhanVien) {
         await tx.nhanVien.update({
           where: { MaNhanVien: updated.NhanVien.MaNhanVien },

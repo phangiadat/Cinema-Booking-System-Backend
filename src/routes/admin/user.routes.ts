@@ -51,10 +51,15 @@ router.put(
 );
 
 /**
- * @route   PATCH /api/v1/admin/nguoi-dung/:maTaiKhoan/doi-mat-khau
+ * @route   PUT/PATCH /api/v1/admin/nguoi-dung/:maTaiKhoan/doi-mat-khau
  * @desc    Admin đặt lại mật khẩu cho người dùng
  * @access  Private - ADMIN only
  */
+router.put(
+  '/:maTaiKhoan/doi-mat-khau',
+  validate(adminChangePasswordSchema),
+  controller.adminDoiMatKhau,
+);
 router.patch(
   '/:maTaiKhoan/doi-mat-khau',
   validate(adminChangePasswordSchema),

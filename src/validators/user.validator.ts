@@ -9,7 +9,7 @@ export const createUserSchema = z
       .string({ required_error: 'Tên đăng nhập là bắt buộc' })
       .min(3, 'Tên đăng nhập phải có ít nhất 3 ký tự')
       .max(50, 'Tên đăng nhập tối đa 50 ký tự')
-      .regex(/^[a-zA-Z0-9_]+$/, 'Tên đăng nhập chỉ được chứa chữ cái, số và dấu gạch dưới'),
+      .regex(/^[a-zA-Z0-9_@.-]+$/, 'Tên đăng nhập chỉ được chứa chữ cái, số, dấu gạch dưới, gạch ngang, @ và dấu chấm'),
     MatKhau: z
       .string({ required_error: 'Mật khẩu là bắt buộc' })
       .min(6, 'Mật khẩu phải có ít nhất 6 ký tự')
