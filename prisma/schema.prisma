@@ -159,6 +159,7 @@ model SoDoGhe {
   TenSoDo     String    @db.VarChar(255)
   SoHang      Int
   SoCot       Int
+  CauTruc     String?   @db.Text
   KhaDung     Boolean   @default(true)
   NgayTao     DateTime  @default(now())
   NgayCapNhat DateTime? @updatedAt

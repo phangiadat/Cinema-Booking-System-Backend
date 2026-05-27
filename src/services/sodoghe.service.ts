@@ -31,6 +31,7 @@ export const taoSoDoGhe = async (input: CreateSoDoGheInput): Promise<SoDoGhe> =>
     TenSoDo: input.TenSoDo,
     SoHang: input.SoHang,
     SoCot: input.SoCot,
+    CauTruc: input.CauTruc,
     KhaDung: true,
   });
 };
@@ -59,6 +60,7 @@ export const capNhatSoDoGhe = async (
     TenSoDo: input.TenSoDo,
     SoHang: input.SoHang,
     SoCot: input.SoCot,
+    CauTruc: input.CauTruc,
     KhaDung: input.KhaDung,
   });
 };

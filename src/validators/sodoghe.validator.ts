@@ -15,6 +15,7 @@ export const createSoDoGheSchema = z.object({
     .int('Số cột phải là số nguyên')
     .min(1, 'Số cột tối thiểu là 1')
     .max(20, 'Số cột tối đa là 20'),
+  CauTruc: z.string().optional(),
 });
 
 export const updateSoDoGheSchema = z.object({
@@ -35,6 +36,7 @@ export const updateSoDoGheSchema = z.object({
     .min(1, 'Số cột tối thiểu là 1')
     .max(20, 'Số cột tối đa là 20')
     .optional(),
+  CauTruc: z.string().optional(),
   KhaDung: z.boolean().optional(),
 }).refine(
   (data) => Object.keys(data).length > 0,
