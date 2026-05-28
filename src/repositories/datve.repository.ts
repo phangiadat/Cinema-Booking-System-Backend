@@ -250,3 +250,90 @@ export const findSuccessfulTransactionByBooking = async (maPhieuDat: string) => 
     },
   });
 };
+
+/**
+ * Transaction to create a pending booking (CHO_THANH_TOAN) and pending transaction (CHO_XU_LY)
+ * while keeping seats in DANG_GIU status so they are reserved.
+ */
+export const createPendingBookingTransaction = async (
+  maKhachHang: string,
+  maSuatChieu: string,
+  seatIds: string[],
+  phuongThuc: PhuongThucThanhToan,
+  tongTien: number,
+  seatPrices: { maGheSuatChieu: string; price: number }[],
+  maTaiKhoan: string,
+) => {
+  const now = new Date();
+
+  return prisma.$transaction(async (tx) => {
+    // 1. Verify seats are still held by the user and not expired
+    const heldSeatsCount = await tx.gheSuatChieu.count({
+      where: {
+        MaSuatChieu: maSuatChieu,
+        MaGheSuatChieu: { in: seatIds },
+        TrangThai: 'DANG_GIU',
+        MaTaiKhoanGiu: maTaiKhoan,
+        ThoiGianGiuGhe: { gte: now },
+      },
+    });
+
+    if (heldSeatsCount !== seatIds.length) {
+      throw new BadRequestError('Một số ghế đã hết hạn giữ hoặc không còn thuộc quyền sở hữu của bạn.');
+    }
+
+    // Note: We do NOT set seats to DA_DAT yet. We keep them as DANG_GIU.
+    // We can extend their hold time to give the user enough time to complete payment (e.g. 10 mins).
+    const paymentExpiry = new Date(now.getTime() + 10 * 60 * 1000);
+    await tx.gheSuatChieu.updateMany({
+      where: {
+        MaSuatChieu: maSuatChieu,
+        MaGheSuatChieu: { in: seatIds },
+      },
+      data: {
+        ThoiGianGiuGhe: paymentExpiry,
+      },
+    });
+
+    // 2. Create PhieuDatVe in CHO_THANH_TOAN status
+    const phieuDatVe = await tx.phieuDatVe.create({
+      data: {
+        MaKhachHang: maKhachHang,
+        MaNhanVien: null,
+        TongTien: tongTien,
+        TrangThai: 'CHO_THANH_TOAN',
+        KhaDung: true,
+      },
+    });
+
+    // 3. Create ChiTietDatVe for each seat
+    for (const sp of seatPrices) {
+      await tx.chiTietDatVe.create({
+        data: {
+          MaPhieuDat: phieuDatVe.MaPhieuDat,
+          MaGheSuatChieu: sp.maGheSuatChieu,
+          GiaVe: sp.price,
+          KhaDung: true,
+        },
+      });
+    }
+
+    // 4. Create GiaoDich in CHO_XU_LY (Pending) status
+    const giaoDich = await tx.giaoDich.create({
+      data: {
+        MaPhieuDat: phieuDatVe.MaPhieuDat,
+        PhuongThuc: phuongThuc,
+        SoTien: tongTien,
+        TrangThai: 'CHO_XU_LY',
+        MaGiaoDichNgoai: null,
+        NgayGiaoDich: new Date(),
+        KhaDung: true,
+      },
+    });
+
+    return {
+      phieuDatVe,
+      giaoDich,
+    };
+  });
+};

@@ -37,6 +37,7 @@ enum PhuongThucThanhToan {
   TIEN_MAT
   MOMO
   CHUYEN_KHOAN
+  PAYOS
 }
 
 enum TrangThaiGiaoDich {

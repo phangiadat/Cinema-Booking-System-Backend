@@ -11,6 +11,7 @@ import {
   createRefundRequest,
   findPendingRefundRequest,
   findSuccessfulTransactionByBooking,
+  createPendingBookingTransaction,
 } from '../repositories/datve.repository';
 
 /**
@@ -225,14 +226,83 @@ export const thanhToanGiaLap = async (
 export const thanhToan = async (
   maSuatChieu: string,
   seatIds: string[],
-  phuongThuc: 'VNPAY' | 'TIEN_MAT',
+  phuongThuc: 'VNPAY' | 'TIEN_MAT' | 'PAYOS',
   maTaiKhoan: string,
 ) => {
-  // TODO: Integrate actual payment gateway (e.g., VNPay, MoMo) here.
-  // For now, this prepares the interface and simulates a successful VNPAY/TIEN_MAT payment.
-  
+  if (phuongThuc === 'PAYOS') {
+    const now = new Date();
+
+    // 1. Find the customer associated with the account
+    const customer = await findCustomerByAccountId(maTaiKhoan);
+    if (!customer) {
+      throw new BadRequestError('Tài khoản không phải là khách hàng hợp lệ.');
+    }
+
+    // 2. Fetch the seats that are held by the user and not expired
+    const heldSeats = await findHeldSeatsForPayment(maSuatChieu, seatIds, maTaiKhoan, now);
+    if (heldSeats.length !== seatIds.length) {
+      throw new BadRequestError('Một hoặc nhiều ghế đã hết hạn giữ hoặc không thuộc quyền sở hữu của bạn.');
+    }
+
+    // 3. Verify showtime has not started yet
+    const firstSeat = heldSeats[0];
+    const sc = firstSeat.SuatChieu;
+    const showtimeStart = new Date(sc.NgayChieu);
+    const gioChieu = new Date(sc.GioChieu);
+    showtimeStart.setHours(gioChieu.getHours(), gioChieu.getMinutes(), gioChieu.getSeconds());
+
+    if (showtimeStart <= now) {
+      throw new BadRequestError('Suất chiếu đã bắt đầu, không thể thực hiện thanh toán.');
+    }
+
+    // 4. Calculate prices
+    let totalAmount = 0;
+    const seatPrices = heldSeats.map((s) => {
+      const basePrice = Number(s.SuatChieu.GiaVeGoc);
+      const roomSurcharge = Number(s.SuatChieu.PhongChieu.LoaiPhong.PhuThu);
+      const daySurcharge = Number(s.SuatChieu.LoaiNgay.PhuThu);
+      const seatSurcharge = Number(s.Ghe.LoaiGhe.PhuThu);
+      const price = basePrice + roomSurcharge + daySurcharge + seatSurcharge;
+      totalAmount += price;
+      return {
+        maGheSuatChieu: s.MaGheSuatChieu,
+        price,
+        tenGhe: `${s.Ghe.ViTriDay}${s.Ghe.ViTriCot}`,
+      };
+    });
+
+    // 5. Create pending booking and transaction, extend seat hold to 10 minutes
+    const result = await createPendingBookingTransaction(
+      customer.MaKhachHang,
+      maSuatChieu,
+      seatIds,
+      'PAYOS',
+      totalAmount,
+      seatPrices,
+      maTaiKhoan,
+    );
+
+    return {
+      success: true,
+      message: 'Tạo phiếu đặt vé thành công, vui lòng thanh toán.',
+      data: {
+        MaPhieuDat: result.phieuDatVe.MaPhieuDat,
+        TongTien: totalAmount,
+        TrangThai: result.phieuDatVe.TrangThai,
+        NgayTao: result.phieuDatVe.NgayTao,
+        DanhSachGhe: seatPrices.map((sp) => ({
+          MaGheSuatChieu: sp.maGheSuatChieu,
+          TenGhe: sp.tenGhe,
+          GiaVe: sp.price,
+        })),
+      },
+    };
+  }
+
+  // Fallback to simulated checkout for other payment methods
   return thanhToanGiaLap(maSuatChieu, seatIds, phuongThuc, 'THANH_CONG', maTaiKhoan);
 };
+
 
 // ==================================================
 // 3. POST /api/v1/dat-ve/:maPhieuDat/huy
