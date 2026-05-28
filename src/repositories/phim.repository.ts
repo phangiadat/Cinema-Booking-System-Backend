@@ -112,6 +112,63 @@ export const findActiveById = async (maPhim: string): Promise<Phim | null> => {
 };
 
 /**
+ * Find public active showtimes for an active movie.
+ */
+export const findPublicShowtimesByMovieId = async (maPhim: string) => {
+  return prisma.suatChieu.findMany({
+    where: {
+      MaPhim: maPhim,
+      KhaDung: true,
+      Phim: {
+        KhaDung: true,
+      },
+      PhongChieu: {
+        KhaDung: true,
+        LoaiPhong: {
+          KhaDung: true,
+        },
+      },
+      LoaiNgay: {
+        KhaDung: true,
+      },
+    },
+    select: {
+      MaSuatChieu: true,
+      MaPhim: true,
+      MaPhong: true,
+      MaLoaiNgay: true,
+      NgayChieu: true,
+      GioChieu: true,
+      GiaVeGoc: true,
+      PhongChieu: {
+        select: {
+          MaPhong: true,
+          TenPhong: true,
+          LoaiPhong: {
+            select: {
+              MaLoaiPhong: true,
+              TenLoaiPhong: true,
+              PhuThu: true,
+            },
+          },
+        },
+      },
+      LoaiNgay: {
+        select: {
+          MaLoaiNgay: true,
+          TenLoaiNgay: true,
+          PhuThu: true,
+        },
+      },
+    },
+    orderBy: [
+      { NgayChieu: 'asc' },
+      { GioChieu: 'asc' },
+    ],
+  });
+};
+
+/**
  * Find duplicate active movie with same TenPhim and NgayKhoiChieu (excluding a MaPhim when updating)
  */
 export const findDuplicateMovie = async (

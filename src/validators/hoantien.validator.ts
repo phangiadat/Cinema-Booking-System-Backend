@@ -17,3 +17,35 @@ export const refundListQuerySchema = z.object({
 });
 
 export type RefundListQueryInput = z.infer<typeof refundListQuerySchema>;
+
+export const adminRefundQuerySchema = z.object({
+  page: z.coerce.number().int().min(1).default(1),
+  limit: z.coerce.number().int().min(1).max(100).default(10),
+  trangThai: z.enum(['CHO_XU_LY', 'DA_HOAN', 'TU_CHOI']).optional(),
+  keyword: z.string().optional(),
+});
+
+export type AdminRefundQueryInput = z.infer<typeof adminRefundQuerySchema>;
+
+export const adminRefundParamsSchema = z.object({
+  maHoanTien: z.string({
+    required_error: 'Mã yêu cầu hoàn tiền là bắt buộc',
+  }).uuid('Mã yêu cầu hoàn tiền phải là UUID hợp lệ'),
+});
+
+export type AdminRefundParamsInput = z.infer<typeof adminRefundParamsSchema>;
+
+export const adminRefundApproveSchema = z.object({
+  GhiChu: z.string().optional(),
+});
+
+export type AdminRefundApproveInput = z.infer<typeof adminRefundApproveSchema>;
+
+export const adminRefundRejectSchema = z.object({
+  LyDoTuChoi: z.string({
+    required_error: 'Lý do từ chối không được để trống',
+  }).min(1, 'Lý do từ chối không được để trống'),
+});
+
+export type AdminRefundRejectInput = z.infer<typeof adminRefundRejectSchema>;
+

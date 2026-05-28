@@ -9,6 +9,8 @@ import {
   softDelete,
   restore,
   countRelatedTicketDetailsByMovieId,
+  findActiveById,
+  findPublicShowtimesByMovieId,
 } from '../repositories/phim.repository';
 import {
   CreatePhimInput,
@@ -83,6 +85,48 @@ export const getChiTietPhim = async (
 };
 
 // ========================
+// Service: Get public showtimes by movie ID
+// ========================
+export const getSuatChieuCuaPhim = async (maPhim: string) => {
+  const phim = await findActiveById(maPhim);
+  if (!phim) {
+    throw new NotFoundError(`Không tìm thấy phim với mã: ${maPhim}`);
+  }
+
+  const now = new Date();
+  const suatChieus = await findPublicShowtimesByMovieId(maPhim);
+
+  return suatChieus
+    .filter((suatChieu) => {
+      const showtimeStart = new Date(suatChieu.NgayChieu);
+      const gioChieu = new Date(suatChieu.GioChieu);
+      showtimeStart.setHours(
+        gioChieu.getHours(),
+        gioChieu.getMinutes(),
+        gioChieu.getSeconds(),
+        gioChieu.getMilliseconds(),
+      );
+
+      return showtimeStart >= now;
+    })
+    .map((suatChieu) => ({
+      ...suatChieu,
+      GiaVeGoc: Number(suatChieu.GiaVeGoc),
+      PhongChieu: {
+        ...suatChieu.PhongChieu,
+        LoaiPhong: {
+          ...suatChieu.PhongChieu.LoaiPhong,
+          PhuThu: Number(suatChieu.PhongChieu.LoaiPhong.PhuThu),
+        },
+      },
+      LoaiNgay: {
+        ...suatChieu.LoaiNgay,
+        PhuThu: Number(suatChieu.LoaiNgay.PhuThu),
+      },
+    }));
+};
+
+// ========================
 // Service: Create a new movie
 // ========================
 export const taoPhim = async (input: CreatePhimInput): Promise<Phim> => {
@@ -108,6 +152,37 @@ export const taoPhim = async (input: CreatePhimInput): Promise<Phim> => {
     HinhAnh: input.HinhAnh ?? null,
     KhaDung: input.KhaDung ?? true,
   });
+};
+
+const getCombinedDateTime = (ngayChieu: Date, gioChieu: Date): Date => {
+  const year = ngayChieu.getUTCFullYear();
+  const month = ngayChieu.getUTCMonth();
+  const date = ngayChieu.getUTCDate();
+
+  const hours = gioChieu.getUTCHours();
+  const minutes = gioChieu.getUTCMinutes();
+  const seconds = gioChieu.getUTCSeconds();
+
+  return new Date(Date.UTC(year, month, date, hours, minutes, seconds));
+};
+
+const checkCanUpdateActiveStatus = async (maPhim: string): Promise<void> => {
+  const showtimes = await prisma.suatChieu.findMany({
+    where: { MaPhim: maPhim },
+    select: { NgayChieu: true, GioChieu: true },
+  });
+
+  const now = new Date();
+  const hasFutureShowtime = showtimes.some((sc) => {
+    const startDateTime = getCombinedDateTime(sc.NgayChieu, sc.GioChieu);
+    return startDateTime >= now;
+  });
+
+  if (hasFutureShowtime) {
+    throw new BadRequestError(
+      'Không thể cập nhật trạng thái khả dụng của phim khi phim đang có suất chiếu trong tương lai.',
+    );
+  }
 };
 
 // ========================
@@ -136,6 +211,10 @@ export const capNhatPhim = async (
     );
   }
 
+  if (input.KhaDung !== undefined && input.KhaDung !== existing.KhaDung) {
+    await checkCanUpdateActiveStatus(maPhim);
+  }
+
   return update(maPhim, {
     ...(input.TenPhim !== undefined && { TenPhim: input.TenPhim }),
     ...(input.ThoiLuong !== undefined && { ThoiLuong: input.ThoiLuong }),
@@ -156,7 +235,10 @@ export const capNhatPhim = async (
 // Service: Soft delete a movie
 // ========================
 export const anPhim = async (maPhim: string): Promise<Phim> => {
-  await assertPhimExists(maPhim);
+  const existing = await assertPhimExists(maPhim);
+  if (existing.KhaDung) {
+    await checkCanUpdateActiveStatus(maPhim);
+  }
   return softDelete(maPhim);
 };
 
@@ -164,7 +246,10 @@ export const anPhim = async (maPhim: string): Promise<Phim> => {
 // Service: Restore a movie
 // ========================
 export const khoiPhucPhim = async (maPhim: string): Promise<Phim> => {
-  await assertPhimExists(maPhim);
+  const existing = await assertPhimExists(maPhim);
+  if (!existing.KhaDung) {
+    await checkCanUpdateActiveStatus(maPhim);
+  }
   return restore(maPhim);
 };
 
@@ -180,7 +265,15 @@ export const xoaPhim = async (maPhim: string): Promise<void> => {
     throw new BadRequestError('Phim không thể xóa');
   }
 
-  // Safely cleanup showtimes & seats of those showtimes if no ticket details exist
+  // Block deletion if any showtimes exist
+  const showtimeCount = await prisma.suatChieu.count({
+    where: { MaPhim: maPhim },
+  });
+  if (showtimeCount > 0) {
+    throw new BadRequestError('Phim không thể xóa');
+  }
+
+  // Safely cleanup showtimes & seats of those showtimes if no ticket details exist (though showtimeCount check above makes this dead code, keeping it for prisma transaction safety)
   await prisma.$transaction(async (tx) => {
     // 1. Delete all DanhGia related to this phim
     await tx.danhGia.deleteMany({

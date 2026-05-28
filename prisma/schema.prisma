@@ -37,6 +37,7 @@ enum PhuongThucThanhToan {
   TIEN_MAT
   MOMO
   CHUYEN_KHOAN
+  PAYOS
 }
 
 enum TrangThaiGiaoDich {
@@ -82,6 +83,7 @@ model TaiKhoan {
   NhanVien          NhanVien?
   RefreshTokens     RefreshToken[]
   GheSuatChieusHeld GheSuatChieu[]
+  PasswordResetOtps PasswordResetOtp[]
 
   @@map("tai_khoan")
 }
@@ -159,6 +161,7 @@ model SoDoGhe {
   TenSoDo     String    @db.VarChar(255)
   SoHang      Int
   SoCot       Int
+  CauTruc     String?   @db.Text
   KhaDung     Boolean   @default(true)
   NgayTao     DateTime  @default(now())
   NgayCapNhat DateTime? @updatedAt
@@ -436,4 +439,21 @@ model RefreshToken {
 
   @@index([MaTaiKhoan])
   @@map("refresh_token")
+}
+
+model PasswordResetOtp {
+  MaOtp        String   @id @default(uuid()) @db.VarChar(36)
+  MaTaiKhoan   String   @db.VarChar(36)
+  OtpHash      String   @db.VarChar(255)
+  HetHanLuc    DateTime
+  SoLanThu     Int      @default(0)
+  DaSuDung     Boolean  @default(false)
+  NgayTao      DateTime @default(now())
+  NgayCapNhat  DateTime @updatedAt
+
+  TaiKhoan     TaiKhoan @relation(fields: [MaTaiKhoan], references: [MaTaiKhoan], onDelete: Cascade)
+
+  @@index([MaTaiKhoan])
+  @@index([HetHanLuc])
+  @@map("password_reset_otp")
 }

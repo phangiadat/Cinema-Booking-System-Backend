@@ -82,3 +82,40 @@ export const thanhToanBanVe = async (
     next(error);
   }
 };
+
+/**
+ * GET /api/v1/staff/ban-ve/lich-su
+ * Lấy lịch sử bán vé tại quầy của nhân viên
+ */
+export const getLichSuBanVe = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> => {
+  try {
+    const maTaiKhoan = req.user!.maTaiKhoan;
+    const query = req.query as any;
+
+    const result = await staffBanVeService.getSalesHistoryForStaff(maTaiKhoan, {
+      page: query.page ?? 1,
+      limit: query.limit ?? 10,
+      tuNgay: query.tuNgay,
+      denNgay: query.denNgay,
+      keyword: query.keyword,
+    });
+
+    sendPaginatedSuccess(
+      res,
+      'Lấy lịch sử bán vé thành công',
+      result.history,
+      {
+        page: result.page,
+        limit: result.limit,
+        total: result.total,
+        totalPages: result.totalPages,
+      }
+    );
+  } catch (error) {
+    next(error);
+  }
+};

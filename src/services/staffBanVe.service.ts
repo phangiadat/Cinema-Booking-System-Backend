@@ -362,3 +362,125 @@ export const sellTicketsAtCounter = async (
     })),
   };
 };
+
+/**
+ * Get ticket sales history (POS counter sales) for a staff member
+ */
+export const getSalesHistoryForStaff = async (
+  maTaiKhoan: string,
+  queryFilters: { page: number; limit: number; tuNgay?: Date; denNgay?: Date; keyword?: string },
+) => {
+  const staff = await findStaffByAccountId(maTaiKhoan);
+  if (!staff) {
+    throw new UnauthorizedError('Tài khoản đã bị vô hiệu hóa hoặc không có quyền nhân viên');
+  }
+
+  const { page, limit, tuNgay, denNgay, keyword } = queryFilters;
+  const skip = (page - 1) * limit;
+
+  const where: any = {
+    MaNhanVien: staff.MaNhanVien,
+    TrangThai: 'DA_THANH_TOAN',
+    KhaDung: true,
+  };
+
+  if (tuNgay || denNgay) {
+    where.NgayTao = {};
+    if (tuNgay) {
+      where.NgayTao.gte = tuNgay;
+    }
+    if (denNgay) {
+      where.NgayTao.lte = denNgay;
+    }
+  }
+
+  if (keyword) {
+    where.OR = [
+      {
+        MaPhieuDat: { contains: keyword },
+      },
+      {
+        ChiTietDatVes: {
+          some: {
+            GheSuatChieu: {
+              SuatChieu: {
+                Phim: {
+                  TenPhim: { contains: keyword },
+                },
+              },
+            },
+          },
+        },
+      },
+    ];
+  }
+
+  const [sales, total] = await Promise.all([
+    prisma.phieuDatVe.findMany({
+      where,
+      skip,
+      take: limit,
+      orderBy: {
+        NgayTao: 'desc',
+      },
+      include: {
+        GiaoDichs: {
+          where: { KhaDung: true },
+        },
+        ChiTietDatVes: {
+          where: { KhaDung: true },
+          include: {
+            GheSuatChieu: {
+              include: {
+                SuatChieu: {
+                  include: {
+                    Phim: true,
+                    PhongChieu: true,
+                  },
+                },
+                Ghe: true,
+              },
+            },
+          },
+        },
+      },
+    }),
+    prisma.phieuDatVe.count({ where }),
+  ]);
+
+  const totalPages = Math.ceil(total / limit) || 1;
+
+  const mappedSales = sales.map((sale) => {
+    const firstTicket = sale.ChiTietDatVes[0];
+    const suatChieu = firstTicket?.GheSuatChieu.SuatChieu;
+    const phim = suatChieu?.Phim;
+    const phong = suatChieu?.PhongChieu;
+    const seats = sale.ChiTietDatVes
+      .map((ct) => `${ct.GheSuatChieu.Ghe.ViTriDay}${ct.GheSuatChieu.Ghe.ViTriCot}`)
+      .join(', ');
+
+    return {
+      MaPhieuDat: sale.MaPhieuDat,
+      NgayTao: sale.NgayTao,
+      TongTien: Number(sale.TongTien),
+      Phim: phim ? { TenPhim: phim.TenPhim } : null,
+      PhongChieu: phong ? { TenPhong: phong.TenPhong } : null,
+      Ghe: seats,
+      SuatChieu: suatChieu
+        ? {
+            NgayChieu: suatChieu.NgayChieu,
+            GioChieu: suatChieu.GioChieu,
+          }
+        : null,
+      PhuongThuc: sale.GiaoDichs[0]?.PhuongThuc || 'TIEN_MAT',
+    };
+  });
+
+  return {
+    history: mappedSales,
+    total,
+    page,
+    limit,
+    totalPages,
+  };
+};

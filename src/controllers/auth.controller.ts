@@ -1,7 +1,14 @@
 import { Request, Response, NextFunction } from 'express';
 import * as authService from '../services/auth.service';
 import { sendSuccess, sendCreated } from '../utils/response';
-import { RegisterInput, LoginInput, RefreshTokenInput } from '../validators/auth.validator';
+import {
+  RegisterInput,
+  LoginInput,
+  RefreshTokenInput,
+  ForgotPasswordInput,
+  VerifyResetOtpInput,
+  ResetPasswordInput,
+} from '../validators/auth.validator';
 
 // ========================
 // POST /auth/register
@@ -94,3 +101,58 @@ export const getMe = async (
     next(error);
   }
 };
+
+// ========================
+// POST /auth/forgot-password
+// ========================
+export const forgotPassword = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> => {
+  try {
+    const input = req.body as ForgotPasswordInput;
+    await authService.forgotPassword(input);
+
+    sendSuccess(res, 'Nếu email tồn tại trong hệ thống, mã xác nhận đã được gửi.');
+  } catch (error) {
+    next(error);
+  }
+};
+
+// ========================
+// POST /auth/verify-reset-otp
+// ========================
+export const verifyResetOtp = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> => {
+  try {
+    const input = req.body as VerifyResetOtpInput;
+    await authService.verifyResetOtp(input);
+
+    sendSuccess(res, 'Mã xác nhận hợp lệ.');
+  } catch (error) {
+    next(error);
+  }
+};
+
+// ========================
+// POST /auth/reset-password
+// ========================
+export const resetPassword = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> => {
+  try {
+    const input = req.body as ResetPasswordInput;
+    await authService.resetPassword(input);
+
+    sendSuccess(res, 'Đặt lại mật khẩu thành công. Vui lòng đăng nhập lại.');
+  } catch (error) {
+    next(error);
+  }
+};
+

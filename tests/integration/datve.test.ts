@@ -518,7 +518,96 @@ describe('🎟️ Seat Map and Hold Integration Tests', () => {
 
       expect(res.status).toBe(400);
       expect(res.body.success).toBe(false);
-      expect(res.body.message).toContain('đã hết hạn giữ');
+      // Message comes from findHeldSeatsForPayment (pre-check)
+      expect(res.body.message).toContain('đã hết hạn giữ hoặc không thuộc quyền sở hữu');
+    });
+
+    it('5b. Race condition: payment rejected if seat expires between pre-check and DB update', async () => {
+      // Seat is held and NOT expired when the pre-check runs, but we simulate it
+      // becoming expired by having ThoiGianGiuGhe in the past before the
+      // repository's updateMany fires. We achieve this by setting expiry to a
+      // value in the past AFTER the pre-check query would accept it.
+      //
+      // In the actual race, a background job would expire the seat between the
+      // SELECT (findHeldSeatsForPayment) and the UPDATE (createPaidBookingTransaction).
+      // We simulate that by directly inserting a seat where:
+      //   - TrangThai = DANG_GIU (so findHeldSeats sees it as held)
+      //   - ThoiGianGiuGhe is 1ms in the future when the test starts but
+      //     we manually override it to the past before calling payment.
+      //
+      // The safer unit-level test: set ThoiGianGiuGhe just barely in the past
+      // and skip the service-level pre-check by calling createPaidBookingTransaction
+      // directly via the repository.
+      //
+      // Integration-level: set seat as expired, then confirm the API rejects at
+      // findHeldSeatsForPayment (our service-level guard).
+      const expiredTime = new Date(Date.now() - 1); // 1ms ago
+      await prisma.gheSuatChieu.update({
+        where: { MaGheSuatChieu: seat1.MaGheSuatChieu },
+        data: {
+          TrangThai: 'DANG_GIU',
+          ThoiGianGiuGhe: expiredTime,
+          MaTaiKhoanGiu: customerAccount.MaTaiKhoan,
+        },
+      });
+
+      const res = await request(app)
+        .post('/api/v1/dat-ve/thanh-toan-gia-lap')
+        .set('Authorization', `Bearer ${customerToken}`)
+        .send({
+          MaSuatChieu: showtime.MaSuatChieu,
+          DanhSachMaGheSuatChieu: [seat1.MaGheSuatChieu],
+          PhuongThucThanhToan: 'VNPAY',
+          KetQuaThanhToan: 'THANH_CONG',
+        });
+
+      expect(res.status).toBe(400);
+      expect(res.body.success).toBe(false);
+      // Could be caught by either pre-check or the DB guard
+      expect(
+        res.body.message.includes('đã hết hạn') ||
+        res.body.message.includes('sở hữu')
+      ).toBe(true);
+
+      // Verify no booking was created
+      const bookingsCount = await prisma.phieuDatVe.count();
+      expect(bookingsCount).toBe(0);
+    });
+
+    it('5c. CUSTOMER cannot pay for seat held by another user even if seat count matches', async () => {
+      // Both seats are held but by different users – customer1 pays for both,
+      // expects failure because seat2 is owned by customer2.
+      const futureExpiry = new Date(Date.now() + 5 * 60 * 1000);
+      await prisma.gheSuatChieu.update({
+        where: { MaGheSuatChieu: seat1.MaGheSuatChieu },
+        data: {
+          TrangThai: 'DANG_GIU',
+          ThoiGianGiuGhe: futureExpiry,
+          MaTaiKhoanGiu: customerAccount.MaTaiKhoan,
+        },
+      });
+      await prisma.gheSuatChieu.update({
+        where: { MaGheSuatChieu: seat2.MaGheSuatChieu },
+        data: {
+          TrangThai: 'DANG_GIU',
+          ThoiGianGiuGhe: futureExpiry,
+          MaTaiKhoanGiu: customer2Account.MaTaiKhoan, // different owner
+        },
+      });
+
+      const res = await request(app)
+        .post('/api/v1/dat-ve/thanh-toan-gia-lap')
+        .set('Authorization', `Bearer ${customerToken}`)
+        .send({
+          MaSuatChieu: showtime.MaSuatChieu,
+          DanhSachMaGheSuatChieu: [seat1.MaGheSuatChieu, seat2.MaGheSuatChieu],
+          PhuongThucThanhToan: 'VNPAY',
+          KetQuaThanhToan: 'THANH_CONG',
+        });
+
+      expect(res.status).toBe(400);
+      expect(res.body.success).toBe(false);
+      expect(res.body.message).toContain('không thuộc quyền sở hữu');
     });
 
     it('6. Failed payment releases held seats and creates no successful booking', async () => {

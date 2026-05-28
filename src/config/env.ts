@@ -39,7 +39,23 @@ export const env = {
   // API
   API_PREFIX: process.env.API_PREFIX ?? '/api/v1',
 
+  // SMTP
+  SMTP_HOST: process.env.SMTP_HOST,
+  SMTP_PORT: process.env.SMTP_PORT ? parseInt(process.env.SMTP_PORT, 10) : undefined,
+  SMTP_SECURE: process.env.SMTP_SECURE === 'true',
+  SMTP_USER: process.env.SMTP_USER,
+  SMTP_PASS: process.env.SMTP_PASS,
+  SMTP_FROM: process.env.SMTP_FROM ?? 'UIT Cinema <no-reply@uitcinema.com>',
+
+  // PayOS
+  PAYOS_CLIENT_ID: process.env.PAYOS_CLIENT_ID ?? '',
+  PAYOS_API_KEY: process.env.PAYOS_API_KEY ?? '',
+  PAYOS_CHECKSUM_KEY: process.env.PAYOS_CHECKSUM_KEY ?? '',
+  PAYOS_RETURN_URL: process.env.PAYOS_RETURN_URL ?? '',
+  PAYOS_CANCEL_URL: process.env.PAYOS_CANCEL_URL ?? '',
+
   // Helpers
   isProduction: () => process.env.NODE_ENV === 'production',
   isDevelopment: () => process.env.NODE_ENV === 'development',
 } as const;
+

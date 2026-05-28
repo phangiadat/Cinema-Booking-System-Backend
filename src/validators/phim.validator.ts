@@ -191,6 +191,13 @@ export const updatePhimSchema = z
 export type UpdatePhimInput = z.infer<typeof updatePhimSchema>;
 
 // ========================
+// Params Validator
+// ========================
+export const phimParamSchema = z.object({
+  maPhim: z.string().uuid('Mã phim không hợp lệ'),
+});
+
+// ========================
 // Query Params Validator
 // ========================
 export const phimQuerySchema = z.object({

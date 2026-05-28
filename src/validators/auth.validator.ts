@@ -71,3 +71,56 @@ export const refreshTokenSchema = z.object({
 });
 
 export type RefreshTokenInput = z.infer<typeof refreshTokenSchema>;
+
+// ========================
+// Forgot Password Validator
+// ========================
+export const forgotPasswordSchema = z.object({
+  Email: z
+    .string({ required_error: 'Email là bắt buộc' })
+    .email('Email không đúng định dạng')
+    .max(255, 'Email tối đa 255 ký tự'),
+});
+
+export type ForgotPasswordInput = z.infer<typeof forgotPasswordSchema>;
+
+// ========================
+// Verify Reset OTP Validator
+// ========================
+export const verifyResetOtpSchema = z.object({
+  Email: z
+    .string({ required_error: 'Email là bắt buộc' })
+    .email('Email không đúng định dạng')
+    .max(255, 'Email tối đa 255 ký tự'),
+  Otp: z
+    .string({ required_error: 'Mã xác nhận là bắt buộc' })
+    .regex(/^[0-9]{6}$/, 'Mã xác nhận phải gồm 6 chữ số'),
+});
+
+export type VerifyResetOtpInput = z.infer<typeof verifyResetOtpSchema>;
+
+// ========================
+// Reset Password Validator
+// ========================
+export const resetPasswordSchema = z.object({
+  Email: z
+    .string({ required_error: 'Email là bắt buộc' })
+    .email('Email không đúng định dạng')
+    .max(255, 'Email tối đa 255 ký tự'),
+  Otp: z
+    .string({ required_error: 'Mã xác nhận là bắt buộc' })
+    .regex(/^[0-9]{6}$/, 'Mã xác nhận phải gồm 6 chữ số'),
+  MatKhauMoi: z
+    .string({ required_error: 'Mật khẩu mới là bắt buộc' })
+    .min(6, 'Mật khẩu mới phải có ít nhất 6 ký tự')
+    .max(100, 'Mật khẩu mới tối đa 100 ký tự'),
+  XacNhanMatKhauMoi: z
+    .string({ required_error: 'Xác nhận mật khẩu mới là bắt buộc' })
+    .min(1, 'Xác nhận mật khẩu mới không được để trống'),
+}).refine(data => data.MatKhauMoi === data.XacNhanMatKhauMoi, {
+  message: 'Xác nhận mật khẩu mới không trùng khớp',
+  path: ['XacNhanMatKhauMoi'],
+});
+
+export type ResetPasswordInput = z.infer<typeof resetPasswordSchema>;
+

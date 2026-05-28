@@ -1,11 +1,20 @@
 import prisma from '../config/prisma';
+import { Prisma } from '@prisma/client';
 import { BadRequestError } from '../utils/errors';
 
+type TxOrPrisma = Prisma.TransactionClient | typeof prisma;
+
 /**
- * Release expired holds (can optionally target a specific showtime)
+ * Release expired holds.
+ * Accepts an optional transaction client so this can be called atomically
+ * inside a prisma.$transaction block.
  */
-export const releaseExpiredHolds = async (now: Date, maSuatChieu?: string): Promise<{ count: number }> => {
-  return prisma.gheSuatChieu.updateMany({
+export const releaseExpiredHolds = async (
+  now: Date,
+  maSuatChieu?: string,
+  tx: TxOrPrisma = prisma,
+): Promise<{ count: number }> => {
+  return tx.gheSuatChieu.updateMany({
     where: {
       TrangThai: 'DANG_GIU',
       ThoiGianGiuGhe: { lt: now },
@@ -18,6 +27,7 @@ export const releaseExpiredHolds = async (now: Date, maSuatChieu?: string): Prom
     },
   });
 };
+
 
 /**
  * Hold seats transactionally with strict race condition prevention

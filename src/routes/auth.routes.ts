@@ -6,6 +6,9 @@ import {
   registerSchema,
   loginSchema,
   refreshTokenSchema,
+  forgotPasswordSchema,
+  verifyResetOtpSchema,
+  resetPasswordSchema,
 } from '../validators/auth.validator';
 
 const router = Router();
@@ -49,4 +52,38 @@ router.post('/logout', authMiddleware, authController.logout);
  */
 router.get('/me', authMiddleware, authController.getMe);
 
+/**
+ * @route   POST /api/v1/auth/forgot-password
+ * @desc    Gửi mã OTP qua email để đặt lại mật khẩu
+ * @access  Public
+ */
+router.post(
+  '/forgot-password',
+  validate(forgotPasswordSchema),
+  authController.forgotPassword,
+);
+
+/**
+ * @route   POST /api/v1/auth/verify-reset-otp
+ * @desc    Xác thực mã OTP đặt lại mật khẩu
+ * @access  Public
+ */
+router.post(
+  '/verify-reset-otp',
+  validate(verifyResetOtpSchema),
+  authController.verifyResetOtp,
+);
+
+/**
+ * @route   POST /api/v1/auth/reset-password
+ * @desc    Đặt lại mật khẩu mới bằng OTP
+ * @access  Public
+ */
+router.post(
+  '/reset-password',
+  validate(resetPasswordSchema),
+  authController.resetPassword,
+);
+
 export default router;
+

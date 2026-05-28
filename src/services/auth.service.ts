@@ -23,6 +23,9 @@ import {
   RegisterInput,
   LoginInput,
   RefreshTokenInput,
+  ForgotPasswordInput,
+  VerifyResetOtpInput,
+  ResetPasswordInput,
 } from '../validators/auth.validator';
 import {
   UnauthorizedError,
@@ -30,6 +33,18 @@ import {
   NotFoundError,
   BadRequestError,
 } from '../utils/errors';
+import {
+  findTaiKhoanByEmail,
+  updatePasswordAndRevokeTokens,
+} from '../repositories/taikhoan.repository';
+import {
+  createPasswordResetOtp,
+  invalidatePreviousOtps,
+  findActiveOtpByAccountId,
+  incrementOtpAttempts,
+  markOtpAsUsed,
+} from '../repositories/otp.repository';
+import { sendResetOtpEmail } from '../utils/email.util';
 
 // ========================
 // Types
@@ -276,3 +291,121 @@ export const getMe = async (
 
   return sanitizeTaiKhoan(taiKhoan);
 };
+
+// ========================
+// Service: Forgot Password
+// ========================
+export const forgotPassword = async (input: ForgotPasswordInput): Promise<void> => {
+  const { Email } = input;
+
+  const taiKhoan = await findTaiKhoanByEmail(Email);
+  
+  // If account exists and is enabled, generate and send OTP
+  if (taiKhoan && taiKhoan.KhaDung) {
+    // 1. Invalidate previous OTPs
+    await invalidatePreviousOtps(taiKhoan.MaTaiKhoan);
+
+    // 2. Generate new 6-digit OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+
+    // 3. Hash the OTP using bcrypt
+    const otpHash = await hashPassword(otp);
+
+    // 4. Calculate expiration time (10 minutes from now)
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+
+    // 5. Store OTP record in database
+    await createPasswordResetOtp({
+      MaTaiKhoan: taiKhoan.MaTaiKhoan,
+      OtpHash: otpHash,
+      HetHanLuc: expiresAt,
+    });
+
+    // 6. Send OTP reset email
+    await sendResetOtpEmail(Email, otp);
+  } else if (taiKhoan && !taiKhoan.KhaDung) {
+    // Log info for disabled account in dev mode
+    console.warn(`⚠️ [Forgot Password Request]: Account for ${Email} is disabled. Skipping OTP send.`);
+  } else {
+    // Log info for non-existing email in dev mode
+    console.warn(`⚠️ [Forgot Password Request]: Email ${Email} not found. Skipping OTP send.`);
+  }
+};
+
+// ========================
+// Service: Verify Reset OTP
+// ========================
+export const verifyResetOtp = async (input: VerifyResetOtpInput): Promise<void> => {
+  const { Email, Otp } = input;
+
+  const taiKhoan = await findTaiKhoanByEmail(Email);
+  if (!taiKhoan) {
+    throw new NotFoundError('Không tìm thấy tài khoản');
+  }
+
+  if (!taiKhoan.KhaDung) {
+    throw new UnauthorizedError('Tài khoản đã bị vô hiệu hóa');
+  }
+
+  const activeOtp = await findActiveOtpByAccountId(taiKhoan.MaTaiKhoan);
+  if (!activeOtp) {
+    throw new BadRequestError('Mã xác nhận không tồn tại hoặc đã hết hạn');
+  }
+
+  // Security Check: Attempt limit (max 5)
+  if (activeOtp.SoLanThu >= 5) {
+    throw new BadRequestError('Mã xác nhận đã bị khóa do thử sai quá nhiều lần');
+  }
+
+  const isOtpValid = await comparePassword(Otp, activeOtp.OtpHash);
+  if (!isOtpValid) {
+    // Increment the attempt count
+    await incrementOtpAttempts(activeOtp.MaOtp);
+    throw new BadRequestError('Mã xác nhận không hợp lệ');
+  }
+};
+
+// ========================
+// Service: Reset Password
+// ========================
+export const resetPassword = async (input: ResetPasswordInput): Promise<void> => {
+  const { Email, Otp, MatKhauMoi } = input;
+
+  const taiKhoan = await findTaiKhoanByEmail(Email);
+  if (!taiKhoan) {
+    throw new NotFoundError('Không tìm thấy tài khoản');
+  }
+
+  if (!taiKhoan.KhaDung) {
+    throw new UnauthorizedError('Tài khoản đã bị vô hiệu hóa');
+  }
+
+  const activeOtp = await findActiveOtpByAccountId(taiKhoan.MaTaiKhoan);
+  if (!activeOtp) {
+    throw new BadRequestError('Mã xác nhận không tồn tại hoặc đã hết hạn');
+  }
+
+  // Security Check: Attempt limit (max 5)
+  if (activeOtp.SoLanThu >= 5) {
+    throw new BadRequestError('Mã xác nhận đã bị khóa do thử sai quá nhiều lần');
+  }
+
+  const isOtpValid = await comparePassword(Otp, activeOtp.OtpHash);
+  if (!isOtpValid) {
+    // Increment the attempt count
+    await incrementOtpAttempts(activeOtp.MaOtp);
+    throw new BadRequestError('Mã xác nhận không hợp lệ');
+  }
+
+  // OTP verified successfully!
+  
+  // 1. Mark OTP as used
+  await markOtpAsUsed(activeOtp.MaOtp);
+
+  // 2. Hash new password
+  const newPasswordHash = await hashPassword(MatKhauMoi);
+
+  // 3. Update password & revoke all refresh tokens in a database transaction
+  await updatePasswordAndRevokeTokens(taiKhoan.MaTaiKhoan, newPasswordHash);
+};
+
