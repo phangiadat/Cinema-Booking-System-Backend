@@ -11,6 +11,7 @@ import userRoutes from './user.routes';
 import giaoDichRoutes from './giaodich.routes';
 import caLamViecRoutes from './calamviec.routes';
 import thongKeRoutes from './thongke.routes';
+import hoanTienRoutes from './hoantien.routes';
 
 const router = Router();
 
@@ -28,5 +29,6 @@ router.use('/nguoi-dung', userRoutes);
 router.use('/giao-dich', giaoDichRoutes);
 router.use('/ca-lam-viec', caLamViecRoutes);
 router.use('/thong-ke', thongKeRoutes);
+router.use('/hoan-tien', hoanTienRoutes);
 
 export default router;

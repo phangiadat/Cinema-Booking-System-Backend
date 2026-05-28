@@ -123,3 +123,242 @@ export const countRefundRequestsByCustomer = async (maKhachHang: string) => {
     },
   });
 };
+
+/**
+ * Retrieve paginated and filtered refund requests for ADMIN
+ */
+export const findRefundRequestsAdmin = async (
+  skip: number,
+  limit: number,
+  trangThai?: any,
+  keyword?: string,
+) => {
+  const where: any = { KhaDung: true };
+
+  if (trangThai) {
+    where.TrangThai = trangThai;
+  }
+
+  if (keyword) {
+    const keywordTrimmed = keyword.trim();
+    where.OR = [
+      { MaHoanTien: { contains: keywordTrimmed } },
+      { LyDo: { contains: keywordTrimmed } },
+      {
+        GiaoDich: {
+          OR: [
+            { MaGiaoDich: { contains: keywordTrimmed } },
+            { MaGiaoDichNgoai: { contains: keywordTrimmed } },
+            {
+              PhieuDatVe: {
+                OR: [
+                  { MaPhieuDat: { contains: keywordTrimmed } },
+                  {
+                    KhachHang: {
+                      TaiKhoan: {
+                        OR: [
+                          { HoTen: { contains: keywordTrimmed } },
+                          { Email: { contains: keywordTrimmed } },
+                          { SoDienThoai: { contains: keywordTrimmed } },
+                        ],
+                      },
+                    },
+                  },
+                ],
+              },
+            },
+          ],
+        },
+      },
+    ];
+  }
+
+  return prisma.lichSuHoanTien.findMany({
+    where,
+    skip,
+    take: limit,
+    orderBy: {
+      NgayTao: 'desc',
+    },
+    include: {
+      GiaoDich: {
+        include: {
+          PhieuDatVe: {
+            include: {
+              KhachHang: {
+                include: {
+                  TaiKhoan: {
+                    select: {
+                      MaTaiKhoan: true,
+                      HoTen: true,
+                      Email: true,
+                      SoDienThoai: true,
+                    },
+                  },
+                },
+              },
+              ChiTietDatVes: {
+                include: {
+                  GheSuatChieu: {
+                    include: {
+                      Ghe: true,
+                      SuatChieu: {
+                        include: {
+                          Phim: true,
+                          PhongChieu: true,
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+  });
+};
+
+/**
+ * Count total refund requests matching filters for ADMIN
+ */
+export const countRefundRequestsAdmin = async (
+  trangThai?: any,
+  keyword?: string,
+) => {
+  const where: any = { KhaDung: true };
+
+  if (trangThai) {
+    where.TrangThai = trangThai;
+  }
+
+  if (keyword) {
+    const keywordTrimmed = keyword.trim();
+    where.OR = [
+      { MaHoanTien: { contains: keywordTrimmed } },
+      { LyDo: { contains: keywordTrimmed } },
+      {
+        GiaoDich: {
+          OR: [
+            { MaGiaoDich: { contains: keywordTrimmed } },
+            { MaGiaoDichNgoai: { contains: keywordTrimmed } },
+            {
+              PhieuDatVe: {
+                OR: [
+                  { MaPhieuDat: { contains: keywordTrimmed } },
+                  {
+                    KhachHang: {
+                      TaiKhoan: {
+                        OR: [
+                          { HoTen: { contains: keywordTrimmed } },
+                          { Email: { contains: keywordTrimmed } },
+                          { SoDienThoai: { contains: keywordTrimmed } },
+                        ],
+                      },
+                    },
+                  },
+                ],
+              },
+            },
+          ],
+        },
+      },
+    ];
+  }
+
+  return prisma.lichSuHoanTien.count({
+    where,
+  });
+};
+
+/**
+ * Find a specific refund request by ID with full nested include for ADMIN
+ */
+export const findRefundRequestByIdAdmin = async (maHoanTien: string) => {
+  return prisma.lichSuHoanTien.findFirst({
+    where: {
+      MaHoanTien: maHoanTien,
+      KhaDung: true,
+    },
+    include: {
+      GiaoDich: {
+        include: {
+          PhieuDatVe: {
+            include: {
+              KhachHang: {
+                include: {
+                  TaiKhoan: {
+                    select: {
+                      MaTaiKhoan: true,
+                      HoTen: true,
+                      Email: true,
+                      SoDienThoai: true,
+                    },
+                  },
+                },
+              },
+              ChiTietDatVes: {
+                include: {
+                  GheSuatChieu: {
+                    include: {
+                      Ghe: true,
+                      SuatChieu: {
+                        include: {
+                          Phim: true,
+                          PhongChieu: true,
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+  });
+};
+
+/**
+ * Approve a pending refund request in a transaction
+ */
+export const approveRefundRequest = async (
+  maHoanTien: string,
+  maGiaoDich: string,
+) => {
+  return prisma.$transaction(async (tx) => {
+    // 1. Update LichSuHoanTien
+    const refund = await tx.lichSuHoanTien.update({
+      where: { MaHoanTien: maHoanTien },
+      data: {
+        TrangThai: 'DA_HOAN',
+        NgayHoanTien: new Date(),
+      },
+    });
+
+    // 2. Update GiaoDich status to DA_HOAN_TIEN
+    await tx.giaoDich.update({
+      where: { MaGiaoDich: maGiaoDich },
+      data: {
+        TrangThai: 'DA_HOAN_TIEN',
+      },
+    });
+
+    return refund;
+  });
+};
+
+/**
+ * Reject a pending refund request
+ */
+export const rejectRefundRequest = async (maHoanTien: string) => {
+  return prisma.lichSuHoanTien.update({
+    where: { MaHoanTien: maHoanTien },
+    data: {
+      TrangThai: 'TU_CHOI',
+    },
+  });
+};
+
