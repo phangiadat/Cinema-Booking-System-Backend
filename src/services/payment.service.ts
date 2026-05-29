@@ -3,7 +3,8 @@ import { payOS } from '../utils/payos.util';
 import { env } from '../config/env';
 import { BadRequestError, NotFoundError } from '../utils/errors';
 import { findCustomerByAccountId } from '../repositories/datve.repository';
-import { generateVNPaySecureHash, verifyVNPaySignature, sortObject, stringifyVNPayParams } from '../utils/vnpay.util';
+import { generateVNPaySecureHash, verifyVNPaySignature, sortObject, stringifyVNPayParams, normalizeIp } from '../utils/vnpay.util';
+import qs from 'qs';
 
 /**
  * Creates a PayOS payment link for a pending booking.
@@ -478,7 +479,7 @@ export const createVnpayLink = async (
     vnp_Amount: Math.round(amount * 100).toString(),
     vnp_CreateDate: createDate,
     vnp_CurrCode: 'VND',
-    vnp_IpAddr: clientIp || '127.0.0.1',
+    vnp_IpAddr: normalizeIp(clientIp),
     vnp_Locale: 'vn',
     vnp_OrderInfo: `Thanh toan phieu dat ve ${maPhieuDat}`.substring(0, 100),
     vnp_OrderType: 'billpayment',
@@ -487,26 +488,18 @@ export const createVnpayLink = async (
   };
 
   // 6. Generate the secure hash and payment URL
+  const sortedParams = sortObject(vnpParams);
+  const signData = qs.stringify(sortedParams, { encode: false });
   const secureHash = generateVNPaySecureHash(vnpParams, env.VNPAY_HASH_SECRET);
   
-  // Sort parameters for the query string construction
-  const sortedParams = sortObject(vnpParams);
+  // Append vnp_SecureHash to sortedParams
+  (sortedParams as any).vnp_SecureHash = secureHash;
   
-  // Build query string with double encoding to match VNPAY requirements
-  const queryString = stringifyVNPayParams(sortedParams);
+  const paymentUrl = `${env.VNPAY_PAYMENT_URL}?${qs.stringify(sortedParams, { encode: false })}`;
 
-  const paymentUrl = `${env.VNPAY_PAYMENT_URL}?${queryString}&vnp_SecureHash=${secureHash}`;
-
-  // Print debug values as requested for audit
-  console.log('=== VNPAY PAYMENT URL GENERATION DEBUG ===');
-  console.log('vnpParams:', JSON.stringify(vnpParams, null, 2));
-  console.log('final sorted params:', JSON.stringify(sortedParams, null, 2));
-  // signData is single-encoded string used for hash calculation
-  const signData = Object.entries(sortedParams).map(([k, v]) => `${k}=${v}`).join('&');
-  console.log('signData string:', signData);
-  console.log('generated hash:', secureHash);
-  console.log('final payment URL:', paymentUrl);
-  console.log('==========================================');
+  // Print debug values as requested
+  console.log("SIGN DATA:", signData);
+  console.log("PAYMENT URL:", paymentUrl);
 
   return {
     paymentUrl,
