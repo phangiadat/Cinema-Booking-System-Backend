@@ -346,6 +346,29 @@ export const approveRefundRequest = async (
       },
     });
 
+    // 3. Get PhieuDatVe and release its seats
+    const transaction = await tx.giaoDich.findUnique({
+      where: { MaGiaoDich: maGiaoDich },
+      select: { MaPhieuDat: true },
+    });
+
+    if (transaction?.MaPhieuDat) {
+      const bookingDetails = await tx.chiTietDatVe.findMany({
+        where: { MaPhieuDat: transaction.MaPhieuDat },
+        select: { MaGheSuatChieu: true },
+      });
+      const seatIds = bookingDetails.map((d: any) => d.MaGheSuatChieu);
+
+      await tx.gheSuatChieu.updateMany({
+        where: { MaGheSuatChieu: { in: seatIds } },
+        data: {
+          TrangThai: 'TRONG',
+          ThoiGianGiuGhe: null,
+          MaTaiKhoanGiu: null,
+        },
+      });
+    }
+
     return refund;
   });
 };

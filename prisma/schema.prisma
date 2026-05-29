@@ -30,6 +30,7 @@ enum TrangThaiPhieuDatVe {
   CHO_THANH_TOAN
   DA_THANH_TOAN
   DA_HUY
+  HET_HAN
 }
 
 enum PhuongThucThanhToan {

@@ -14,12 +14,55 @@ export const releaseExpiredHolds = async (
   maSuatChieu?: string,
   tx: TxOrPrisma = prisma,
 ): Promise<{ count: number }> => {
-  return tx.gheSuatChieu.updateMany({
+  // 1. Find all expired held seats
+  const expiredSeats = await tx.gheSuatChieu.findMany({
     where: {
       TrangThai: 'DANG_GIU',
       ThoiGianGiuGhe: { lt: now },
       ...(maSuatChieu && { MaSuatChieu: maSuatChieu }),
     },
+    select: { MaGheSuatChieu: true },
+  });
+
+  if (expiredSeats.length === 0) {
+    return { count: 0 };
+  }
+
+  const seatIds = expiredSeats.map((s) => s.MaGheSuatChieu);
+
+  // 2. Find corresponding PhieuDatVe in CHO_THANH_TOAN status
+  const bookingsToCancel = await tx.phieuDatVe.findMany({
+    where: {
+      TrangThai: 'CHO_THANH_TOAN',
+      ChiTietDatVes: {
+        some: { MaGheSuatChieu: { in: seatIds } },
+      },
+    },
+    select: { MaPhieuDat: true },
+  });
+
+  if (bookingsToCancel.length > 0) {
+    const bookingIds = bookingsToCancel.map((b) => b.MaPhieuDat);
+
+    // 3. Update bookings to HET_HAN
+    await tx.phieuDatVe.updateMany({
+      where: { MaPhieuDat: { in: bookingIds } },
+      data: { TrangThai: 'HET_HAN' },
+    });
+
+    // 4. Update transactions to THAT_BAI
+    await tx.giaoDich.updateMany({
+      where: {
+        MaPhieuDat: { in: bookingIds },
+        TrangThai: 'CHO_XU_LY',
+      },
+      data: { TrangThai: 'THAT_BAI' },
+    });
+  }
+
+  // 5. Release seats back to TRONG
+  return tx.gheSuatChieu.updateMany({
+    where: { MaGheSuatChieu: { in: seatIds } },
     data: {
       TrangThai: 'TRONG',
       ThoiGianGiuGhe: null,
