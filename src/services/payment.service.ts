@@ -3,7 +3,7 @@ import { payOS } from '../utils/payos.util';
 import { env } from '../config/env';
 import { BadRequestError, NotFoundError } from '../utils/errors';
 import { findCustomerByAccountId } from '../repositories/datve.repository';
-import { generateVNPaySecureHash, verifyVNPaySignature, sortObject } from '../utils/vnpay.util';
+import { generateVNPaySecureHash, verifyVNPaySignature, sortObject, stringifyVNPayParams } from '../utils/vnpay.util';
 
 /**
  * Creates a PayOS payment link for a pending booking.
@@ -491,11 +491,22 @@ export const createVnpayLink = async (
   
   // Sort parameters for the query string construction
   const sortedParams = sortObject(vnpParams);
-  const queryString = Object.entries(sortedParams)
-    .map(([key, val]) => `${key}=${val}`)
-    .join('&');
+  
+  // Build query string with double encoding to match VNPAY requirements
+  const queryString = stringifyVNPayParams(sortedParams);
 
   const paymentUrl = `${env.VNPAY_PAYMENT_URL}?${queryString}&vnp_SecureHash=${secureHash}`;
+
+  // Print debug values as requested for audit
+  console.log('=== VNPAY PAYMENT URL GENERATION DEBUG ===');
+  console.log('vnpParams:', JSON.stringify(vnpParams, null, 2));
+  console.log('final sorted params:', JSON.stringify(sortedParams, null, 2));
+  // signData is single-encoded string used for hash calculation
+  const signData = Object.entries(sortedParams).map(([k, v]) => `${k}=${v}`).join('&');
+  console.log('signData string:', signData);
+  console.log('generated hash:', secureHash);
+  console.log('final payment URL:', paymentUrl);
+  console.log('==========================================');
 
   return {
     paymentUrl,

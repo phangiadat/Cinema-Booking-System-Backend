@@ -50,3 +50,13 @@ export function verifyVNPaySignature(queryParams: Record<string, any>, secret: s
   
   return calculatedHash.toLowerCase() === String(secureHash).toLowerCase();
 }
+
+/**
+ * Generates the redirect query string for VNPay URL.
+ * It encodes the already-encoded keys and values of the sorted object (double encoding).
+ */
+export function stringifyVNPayParams(sortedParams: Record<string, string>): string {
+  return Object.entries(sortedParams)
+    .map(([key, val]) => `${encodeURIComponent(key)}=${encodeURIComponent(val)}`)
+    .join('&');
+}
