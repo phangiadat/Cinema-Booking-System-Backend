@@ -85,10 +85,14 @@ export const thanhToan = asyncHandler(async (req: Request, res: Response) => {
  */
 export const huyDatVe = asyncHandler(async (req: Request, res: Response) => {
   const { maPhieuDat } = req.params as { maPhieuDat: string };
-  const { LyDoHoan } = req.body as CancelBookingBody;
+  const { LyDoHoan, TenNganHang, SoTaiKhoan, TenChuTaiKhoan } = req.body as CancelBookingBody;
   const maTaiKhoan = req.user!.maTaiKhoan;
 
-  const result = await datVeService.huyPhieuDatVe(maPhieuDat, LyDoHoan, maTaiKhoan);
+  const bankInfo = TenNganHang && SoTaiKhoan && TenChuTaiKhoan
+    ? { TenNganHang, SoTaiKhoan, TenChuTaiKhoan }
+    : undefined;
+
+  const result = await datVeService.huyPhieuDatVe(maPhieuDat, LyDoHoan, maTaiKhoan, bankInfo);
 
   return sendSuccess(res, result.message);
 });

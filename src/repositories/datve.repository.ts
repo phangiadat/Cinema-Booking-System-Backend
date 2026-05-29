@@ -210,6 +210,7 @@ export const createRefundRequest = async (
   maGiaoDich: string,
   soTienHoan: number,
   lyDo: string,
+  bankInfo?: { TenNganHang: string; SoTaiKhoan: string; TenChuTaiKhoan: string },
 ) => {
   return tx.lichSuHoanTien.create({
     data: {
@@ -219,6 +220,9 @@ export const createRefundRequest = async (
       TrangThai: 'CHO_XU_LY',
       NgayHoanTien: null,
       KhaDung: true,
+      TenNganHang: bankInfo?.TenNganHang || null,
+      SoTaiKhoan: bankInfo?.SoTaiKhoan || null,
+      TenChuTaiKhoan: bankInfo?.TenChuTaiKhoan || null,
     },
   });
 };

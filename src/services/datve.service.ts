@@ -312,6 +312,7 @@ export const huyPhieuDatVe = async (
   maPhieuDat: string,
   lyDoHoan: string | undefined,
   maTaiKhoan: string,
+  bankInfo?: { TenNganHang: string; SoTaiKhoan: string; TenChuTaiKhoan: string },
 ) => {
   // 1. Get customer from account
   const customer = await findCustomerByAccountId(maTaiKhoan);
@@ -357,6 +358,11 @@ export const huyPhieuDatVe = async (
 
   // 5. If booking is paid (DA_THANH_TOAN)
   if (booking.TrangThai === 'DA_THANH_TOAN') {
+    // Validate bank info
+    if (!bankInfo || !bankInfo.TenNganHang || !bankInfo.SoTaiKhoan || !bankInfo.TenChuTaiKhoan) {
+      throw new BadRequestError('Thông tin tài khoản ngân hàng để hoàn tiền không được để trống.');
+    }
+
     // Prevent duplicate refund request
     const pendingRefund = await findPendingRefundRequest(maPhieuDat);
     if (pendingRefund) {
@@ -380,7 +386,7 @@ export const huyPhieuDatVe = async (
       });
 
       // Create refund request
-      await createRefundRequest(tx, successfulTx.MaGiaoDich, Number(successfulTx.SoTien), lyDo);
+      await createRefundRequest(tx, successfulTx.MaGiaoDich, Number(successfulTx.SoTien), lyDo, bankInfo);
     });
 
     return {

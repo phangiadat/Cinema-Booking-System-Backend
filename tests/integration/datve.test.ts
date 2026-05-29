@@ -678,6 +678,9 @@ describe('🎟️ Seat Map and Hold Integration Tests', () => {
         .set('Authorization', `Bearer ${customerToken}`)
         .send({
           LyDoHoan: 'Tôi bận việc đột xuất',
+          TenNganHang: 'MBBank',
+          SoTaiKhoan: '999999',
+          TenChuTaiKhoan: 'NGUYEN VAN A',
         });
 
       expect(cancelRes.status).toBe(200);
@@ -718,6 +721,9 @@ describe('🎟️ Seat Map and Hold Integration Tests', () => {
         .set('Authorization', `Bearer ${customerToken}`)
         .send({
           LyDoHoan: 'Tôi bận việc đột xuất',
+          TenNganHang: 'MBBank',
+          SoTaiKhoan: '999999',
+          TenChuTaiKhoan: 'NGUYEN VAN A',
         });
 
       const dbRefund = await prisma.lichSuHoanTien.findFirst({
@@ -762,6 +768,9 @@ describe('🎟️ Seat Map and Hold Integration Tests', () => {
         .set('Authorization', `Bearer ${customerToken}`)
         .send({
           LyDoHoan: 'Tôi bận việc đột xuất',
+          TenNganHang: 'MBBank',
+          SoTaiKhoan: '999999',
+          TenChuTaiKhoan: 'NGUYEN VAN A',
         });
 
       // Verify database: seat status must remain DA_DAT

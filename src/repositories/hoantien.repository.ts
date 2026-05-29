@@ -36,6 +36,7 @@ export const createRefundRequest = async (
   maGiaoDich: string,
   soTienHoan: number,
   lyDo: string,
+  bankInfo?: { TenNganHang: string; SoTaiKhoan: string; TenChuTaiKhoan: string },
 ) => {
   return prisma.$transaction(async (tx) => {
     // 1. Update PhieuDatVe status to DA_HUY
@@ -53,6 +54,9 @@ export const createRefundRequest = async (
         TrangThai: 'CHO_XU_LY',
         NgayHoanTien: null,
         KhaDung: true,
+        TenNganHang: bankInfo?.TenNganHang || null,
+        SoTaiKhoan: bankInfo?.SoTaiKhoan || null,
+        TenChuTaiKhoan: bankInfo?.TenChuTaiKhoan || null,
       },
     });
   });
@@ -345,6 +349,29 @@ export const approveRefundRequest = async (
         TrangThai: 'DA_HOAN_TIEN',
       },
     });
+
+    // 3. Get PhieuDatVe and release its seats
+    const transaction = await tx.giaoDich.findUnique({
+      where: { MaGiaoDich: maGiaoDich },
+      select: { MaPhieuDat: true },
+    });
+
+    if (transaction?.MaPhieuDat) {
+      const bookingDetails = await tx.chiTietDatVe.findMany({
+        where: { MaPhieuDat: transaction.MaPhieuDat },
+        select: { MaGheSuatChieu: true },
+      });
+      const seatIds = bookingDetails.map((d: any) => d.MaGheSuatChieu);
+
+      await tx.gheSuatChieu.updateMany({
+        where: { MaGheSuatChieu: { in: seatIds } },
+        data: {
+          TrangThai: 'TRONG',
+          ThoiGianGiuGhe: null,
+          MaTaiKhoanGiu: null,
+        },
+      });
+    }
 
     return refund;
   });
