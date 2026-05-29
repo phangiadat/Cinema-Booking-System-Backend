@@ -1,8 +1,9 @@
 import crypto from 'crypto';
+import qs from 'qs';
 
 /**
- * Sorts an object alphabetically by key and URL encodes the values.
- * Replaces %20 with + as required by VNPay.
+ * Sorts an object alphabetically by key.
+ * Only removes null/undefined/empty values and preserves original keys and values.
  */
 export function sortObject(obj: Record<string, any>): Record<string, string> {
   const sorted: Record<string, string> = {};
@@ -11,10 +12,7 @@ export function sortObject(obj: Record<string, any>): Record<string, string> {
   for (const key of keys) {
     const val = obj[key];
     if (val !== undefined && val !== null && val !== '') {
-      // VNPay standard helper encodes keys and values
-      const encodedKey = encodeURIComponent(key).replace(/%20/g, '+');
-      const encodedVal = encodeURIComponent(String(val)).replace(/%20/g, '+');
-      sorted[encodedKey] = encodedVal;
+      sorted[key] = String(val);
     }
   }
   return sorted;
@@ -22,13 +20,11 @@ export function sortObject(obj: Record<string, any>): Record<string, string> {
 
 /**
  * Canonical helper to build the signData string for VNPay.
- * It sorts keys alphabetically and joins them without further encoding.
+ * It sorts keys alphabetically and stringifies using qs with encode: false.
  */
 export function buildVnpaySignData(params: Record<string, any>): string {
   const sorted = sortObject(params);
-  return Object.entries(sorted)
-    .map(([key, val]) => `${key}=${val}`)
-    .join('&');
+  return qs.stringify(sorted, { encode: false });
 }
 
 /**
@@ -52,30 +48,31 @@ export function verifyVNPaySignature(queryParams: Record<string, any>, secret: s
   delete params['vnp_SecureHash'];
   delete params['vnp_SecureHashType'];
 
-  const sortedParams = sortObject(params);
-  const signData = buildVnpaySignData(params);
   const calculatedHash = generateVNPaySecureHash(params, secret);
 
-  console.log('=== VNPAY SIGNATURE VERIFICATION DEBUG ===');
-  console.log('Received query params:', JSON.stringify(queryParams, null, 2));
-  console.log('Cleaned params for verification:', JSON.stringify(params, null, 2));
-  console.log('Sorted params (single-encoded):', JSON.stringify(sortedParams, null, 2));
-  console.log('signData string:', signData);
-  console.log('Received hash:', secureHash);
-  console.log('Calculated hash:', calculatedHash);
-  console.log('Signature matches:', calculatedHash.toLowerCase() === String(secureHash).toLowerCase());
-  console.log('==========================================');
+  // Debug log in development mode
+  if (process.env.NODE_ENV === 'development') {
+    const sortedParams = sortObject(params);
+    const signData = buildVnpaySignData(params);
+    console.log('=== VNPAY SIGNATURE VERIFICATION DEBUG ===');
+    console.log('Received query params:', JSON.stringify(queryParams, null, 2));
+    console.log('Cleaned params for verification:', JSON.stringify(params, null, 2));
+    console.log('Sorted params:', JSON.stringify(sortedParams, null, 2));
+    console.log('signData string:', signData);
+    console.log('Received hash:', secureHash);
+    console.log('Calculated hash:', calculatedHash);
+    console.log('Signature matches:', calculatedHash.toLowerCase() === String(secureHash).toLowerCase());
+    console.log('==========================================');
+  }
 
   return calculatedHash.toLowerCase() === String(secureHash).toLowerCase();
 }
 
 /**
  * Generates the redirect query string for VNPay URL.
- * Just joins the already single-encoded keys and values of the sorted object.
+ * Stringifies the sorted parameters using qs with encode: false.
  */
 export function stringifyVNPayParams(sortedParams: Record<string, string>): string {
-  return Object.entries(sortedParams)
-    .map(([key, val]) => `${key}=${val}`)
-    .join('&');
+  return qs.stringify(sortedParams, { encode: false });
 }
 
