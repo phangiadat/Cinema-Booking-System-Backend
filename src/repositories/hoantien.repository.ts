@@ -36,6 +36,7 @@ export const createRefundRequest = async (
   maGiaoDich: string,
   soTienHoan: number,
   lyDo: string,
+  bankInfo?: { TenNganHang: string; SoTaiKhoan: string; TenChuTaiKhoan: string },
 ) => {
   return prisma.$transaction(async (tx) => {
     // 1. Update PhieuDatVe status to DA_HUY
@@ -53,6 +54,9 @@ export const createRefundRequest = async (
         TrangThai: 'CHO_XU_LY',
         NgayHoanTien: null,
         KhaDung: true,
+        TenNganHang: bankInfo?.TenNganHang || null,
+        SoTaiKhoan: bankInfo?.SoTaiKhoan || null,
+        TenChuTaiKhoan: bankInfo?.TenChuTaiKhoan || null,
       },
     });
   });

@@ -94,6 +94,9 @@ export type CancelBookingParam = z.infer<typeof cancelBookingParamSchema>;
 
 export const cancelBookingBodySchema = z.object({
   LyDoHoan: z.string().optional(),
+  TenNganHang: z.string().optional(),
+  SoTaiKhoan: z.string().optional(),
+  TenChuTaiKhoan: z.string().optional(),
 });
 
 export type CancelBookingBody = z.infer<typeof cancelBookingBodySchema>;

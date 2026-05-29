@@ -7,6 +7,15 @@ export const refundRequestSchema = z.object({
   LyDo: z.string({
     required_error: 'Lý do hoàn tiền là bắt buộc',
   }).min(1, 'Lý do hoàn tiền không được để trống'),
+  TenNganHang: z.string({
+    required_error: 'Tên ngân hàng là bắt buộc',
+  }).min(1, 'Tên ngân hàng không được để trống'),
+  SoTaiKhoan: z.string({
+    required_error: 'Số tài khoản là bắt buộc',
+  }).min(1, 'Số tài khoản không được để trống'),
+  TenChuTaiKhoan: z.string({
+    required_error: 'Tên chủ tài khoản là bắt buộc',
+  }).min(1, 'Tên chủ tài khoản không được để trống'),
 });
 
 export type RefundRequestInput = z.infer<typeof refundRequestSchema>;

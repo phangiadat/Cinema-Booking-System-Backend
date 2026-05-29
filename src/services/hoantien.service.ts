@@ -71,6 +71,11 @@ export const yeuCauHoanTien = async (maTaiKhoan: string, input: RefundRequestInp
     successfulTx.MaGiaoDich,
     Number(successfulTx.SoTien),
     input.LyDo,
+    {
+      TenNganHang: input.TenNganHang,
+      SoTaiKhoan: input.SoTaiKhoan,
+      TenChuTaiKhoan: input.TenChuTaiKhoan,
+    },
   );
 
   return {
@@ -81,6 +86,9 @@ export const yeuCauHoanTien = async (maTaiKhoan: string, input: RefundRequestInp
     TrangThai: refund.TrangThai,
     NgayHoanTien: refund.NgayHoanTien,
     NgayTao: refund.NgayTao,
+    TenNganHang: refund.TenNganHang,
+    SoTaiKhoan: refund.SoTaiKhoan,
+    TenChuTaiKhoan: refund.TenChuTaiKhoan,
   };
 };
 
@@ -121,6 +129,9 @@ export const getHoanTienCuaToi = async (maTaiKhoan: string, query: RefundListQue
       TrangThai: refund.TrangThai,
       NgayHoanTien: refund.NgayHoanTien,
       NgayTao: refund.NgayTao,
+      TenNganHang: refund.TenNganHang,
+      SoTaiKhoan: refund.SoTaiKhoan,
+      TenChuTaiKhoan: refund.TenChuTaiKhoan,
       GiaoDich: {
         MaGiaoDich: gd.MaGiaoDich,
         PhuongThuc: gd.PhuongThuc,
@@ -165,6 +176,9 @@ const mapAdminRefundRequest = (refund: any) => {
     NgayHoanTien: refund.NgayHoanTien,
     NgayTao: refund.NgayTao,
     NgayCapNhat: refund.NgayCapNhat,
+    TenNganHang: refund.TenNganHang,
+    SoTaiKhoan: refund.SoTaiKhoan,
+    TenChuTaiKhoan: refund.TenChuTaiKhoan,
     GiaoDich: gd ? {
       MaGiaoDich: gd.MaGiaoDich,
       MaPhieuDat: gd.MaPhieuDat,
