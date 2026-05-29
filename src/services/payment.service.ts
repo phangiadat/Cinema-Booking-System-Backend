@@ -497,15 +497,10 @@ export const createVnpayLink = async (
   
   const paymentUrl = `${env.VNPAY_PAYMENT_URL}?${qs.stringify(sortedParams, { encode: false })}`;
 
-  // Print debug values in development mode as requested
-  if (process.env.NODE_ENV === 'development') {
-    console.log('=== VNPAY PAYMENT URL GENERATION DEBUG ===');
-    console.log('sortedParams:', JSON.stringify(sortedParams, null, 2));
-    console.log('signData string:', signData);
-    console.log('generated hash:', secureHash);
-    console.log('final payment URL:', paymentUrl);
-    console.log('==========================================');
-  }
+  // Print debug values as requested
+  console.log("SIGN DATA:", signData);
+  console.log("HASH:", secureHash);
+  console.log("PAYMENT URL:", paymentUrl);
 
   return {
     paymentUrl,
