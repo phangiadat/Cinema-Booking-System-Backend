@@ -54,6 +54,13 @@ export const env = {
   PAYOS_RETURN_URL: process.env.PAYOS_RETURN_URL ?? '',
   PAYOS_CANCEL_URL: process.env.PAYOS_CANCEL_URL ?? '',
 
+  // VNPay
+  VNPAY_TMN_CODE: (process.env.VNPAY_TMN_CODE ?? '').trim(),
+  VNPAY_HASH_SECRET: (process.env.VNPAY_HASH_SECRET ?? '').trim(),
+  VNPAY_PAYMENT_URL: (process.env.VNPAY_PAYMENT_URL ?? 'https://sandbox.vnpayment.vn/paymentv2/vpcpay.html').trim(),
+  VNPAY_RETURN_URL: (process.env.VNPAY_RETURN_URL ?? '').trim(),
+  VNPAY_IPN_URL: (process.env.VNPAY_IPN_URL ?? '').trim(),
+
   // Helpers
   isProduction: () => process.env.NODE_ENV === 'production',
   isDevelopment: () => process.env.NODE_ENV === 'development',

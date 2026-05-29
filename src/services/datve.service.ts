@@ -229,7 +229,7 @@ export const thanhToan = async (
   phuongThuc: 'VNPAY' | 'TIEN_MAT' | 'PAYOS',
   maTaiKhoan: string,
 ) => {
-  if (phuongThuc === 'PAYOS') {
+  if (phuongThuc === 'PAYOS' || phuongThuc === 'VNPAY') {
     const now = new Date();
 
     // 1. Find the customer associated with the account
@@ -276,7 +276,7 @@ export const thanhToan = async (
       customer.MaKhachHang,
       maSuatChieu,
       seatIds,
-      'PAYOS',
+      phuongThuc,
       totalAmount,
       seatPrices,
       maTaiKhoan,
@@ -299,7 +299,7 @@ export const thanhToan = async (
     };
   }
 
-  // Fallback to simulated checkout for other payment methods
+  // Fallback to simulated checkout for other payment methods (like TIEN_MAT)
   return thanhToanGiaLap(maSuatChieu, seatIds, phuongThuc, 'THANH_CONG', maTaiKhoan);
 };
 
