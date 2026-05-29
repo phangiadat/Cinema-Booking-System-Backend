@@ -150,6 +150,7 @@ export const checkInTicket = async (
       TenPhim: suatChieu.Phim.TenPhim,
       TenPhong: suatChieu.PhongChieu.TenPhong,
       Ghe: `${ticket!.GheSuatChieu.Ghe.ViTriDay}${ticket!.GheSuatChieu.Ghe.ViTriCot}`,
+      GiaVe: Number(ticket!.GiaVe),
       NgayChieu: suatChieu.NgayChieu,
       GioChieu: suatChieu.GioChieu,
     },
