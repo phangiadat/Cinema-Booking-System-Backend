@@ -2,8 +2,16 @@ import crypto from 'crypto';
 import qs from 'qs';
 
 /**
- * Sorts an object alphabetically by key.
- * Only removes null/undefined/empty values and preserves original keys and values.
+ * Normalizes client IP address to IPv4 format.
+ */
+export function normalizeIp(ip?: string): string {
+  if (!ip || ip === '::1' || ip.includes('::ffff:127.0.0.1')) return '127.0.0.1';
+  return ip.split(',')[0].trim();
+}
+
+/**
+ * Sorts an object alphabetically by key and URL encodes keys and values.
+ * Replaces %20 with + as required by VNPay.
  */
 export function sortObject(obj: Record<string, any>): Record<string, string> {
   const sorted: Record<string, string> = {};
@@ -12,7 +20,9 @@ export function sortObject(obj: Record<string, any>): Record<string, string> {
   for (const key of keys) {
     const val = obj[key];
     if (val !== undefined && val !== null && val !== '') {
-      sorted[key] = String(val);
+      const encodedKey = encodeURIComponent(key).replace(/%20/g, '+');
+      const encodedVal = encodeURIComponent(String(val)).replace(/%20/g, '+');
+      sorted[encodedKey] = encodedVal;
     }
   }
   return sorted;
@@ -75,4 +85,5 @@ export function verifyVNPaySignature(queryParams: Record<string, any>, secret: s
 export function stringifyVNPayParams(sortedParams: Record<string, string>): string {
   return qs.stringify(sortedParams, { encode: false });
 }
+
 

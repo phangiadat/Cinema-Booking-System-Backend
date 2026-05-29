@@ -3,7 +3,7 @@ import { payOS } from '../utils/payos.util';
 import { env } from '../config/env';
 import { BadRequestError, NotFoundError } from '../utils/errors';
 import { findCustomerByAccountId } from '../repositories/datve.repository';
-import { generateVNPaySecureHash, verifyVNPaySignature, sortObject, stringifyVNPayParams } from '../utils/vnpay.util';
+import { generateVNPaySecureHash, verifyVNPaySignature, sortObject, stringifyVNPayParams, normalizeIp } from '../utils/vnpay.util';
 import qs from 'qs';
 
 /**
@@ -479,7 +479,7 @@ export const createVnpayLink = async (
     vnp_Amount: Math.round(amount * 100).toString(),
     vnp_CreateDate: createDate,
     vnp_CurrCode: 'VND',
-    vnp_IpAddr: clientIp || '127.0.0.1',
+    vnp_IpAddr: normalizeIp(clientIp),
     vnp_Locale: 'vn',
     vnp_OrderInfo: `Thanh toan phieu dat ve ${maPhieuDat}`.substring(0, 100),
     vnp_OrderType: 'billpayment',
@@ -499,7 +499,6 @@ export const createVnpayLink = async (
 
   // Print debug values as requested
   console.log("SIGN DATA:", signData);
-  console.log("HASH:", secureHash);
   console.log("PAYMENT URL:", paymentUrl);
 
   return {
