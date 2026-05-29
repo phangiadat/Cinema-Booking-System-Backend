@@ -397,6 +397,9 @@ model LichSuHoanTien {
   LyDo         String            @db.Text
   TrangThai    TrangThaiHoanTien
   NgayHoanTien DateTime?         @db.Date
+  TenNganHang    String?           @db.VarChar(100)
+  SoTaiKhoan     String?           @db.VarChar(50)
+  TenChuTaiKhoan String?           @db.VarChar(255)
   KhaDung      Boolean           @default(true)
   NgayTao      DateTime          @default(now())
   NgayCapNhat  DateTime?         @updatedAt
