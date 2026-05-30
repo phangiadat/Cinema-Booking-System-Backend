@@ -92,11 +92,18 @@ async function main() {
   // ========== Helper: tạo suất chiếu + ghế ==========
   async function createShowtime(maPhim: string, maPhong: string, maLoaiNgay: string, ngay: string, gio: string, gia: number) {
     // Check if a showtime already exists at this exact time/room/date
+    // Use date range for NgayChieu to handle timezone issues with @db.Date
+    const targetDate = new Date(ngay);
+    const startOfDay = new Date(targetDate);
+    startOfDay.setUTCHours(0, 0, 0, 0);
+    const endOfDay = new Date(startOfDay);
+    endOfDay.setUTCDate(startOfDay.getUTCDate() + 1);
+
     const existing = await prisma.suatChieu.findFirst({
       where: {
         MaPhim: maPhim,
         MaPhong: maPhong,
-        NgayChieu: new Date(ngay),
+        NgayChieu: { gte: startOfDay, lt: endOfDay },
         GioChieu: new Date(`1970-01-01T${gio}:00Z`),
       }
     });
